@@ -71,7 +71,7 @@ if __name__ == '__main__':
             lr = lr_decay * lr
         optimizer = optimizers.Adam(lr)
         print("\n===============================================================")
-        print(f"Epoch: {epoch}")
+        print(f"Epoch: {epoch + 1}")
         training_fn = create_training_step(model, l_losses, training_metrics, optimizer)
         calc_loop(train_ds, training_fn, train_mean_losses, training_metrics)
         # Validation

@@ -8,11 +8,11 @@ def get_losses_weights(y):
     neg_weight = np.mean(y.astype(float), axis=0)
     pos_weight = 1 - neg_weight
     loss_weights = {}
-    print("\n===============================================================")
-    print("- Losses Weights (Pos, Neg):")
+    # print("\n===============================================================")
+    # print("- Losses Weights (Pos, Neg):")
     for idx, label in enumerate(l_diseases):
         loss_weights[label] = (pos_weight[idx], neg_weight[idx])
-        print(f"\t+ {label}: {loss_weights[label]}")
+        # print(f"\t+ {label}: {loss_weights[label]}")
     return loss_weights
 
 
