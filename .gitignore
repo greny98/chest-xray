@@ -139,3 +139,4 @@ cython_debug/
 
 data/images/
 models/
+.idea
