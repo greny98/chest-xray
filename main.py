@@ -35,12 +35,11 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     print(args)
-    exit()
     if not os.path.exists(args['output_dir']):
         os.mkdir(args['output_dir'])
     images_dir = args['image_dir']
     # Load csv
-    X_train_val_df, y_train_val_df = read_csv('./data/train_val.csv')
+    X_train_val_df, y_train_val_df = read_csv(args['csv_file'])
     # Split train, val
     (X_train, y_train), (X_val, y_val) = train_val_split(X_train_val_df.values, y_train_val_df.values, log=False)
     # Flatten X
