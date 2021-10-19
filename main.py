@@ -5,6 +5,7 @@ from backbone.losses import get_losses_weights, create_losses
 from backbone.model import create_model, create_training_step, create_validate_step, calc_loop
 from utils.data_generator import create_ds
 from utils.dataframe import read_csv, train_val_split
+import time
 
 
 def reset_states():
@@ -72,6 +73,7 @@ if __name__ == '__main__':
         optimizer = optimizers.Adam(lr)
         print("\n===============================================================")
         print(f"Epoch: {epoch + 1}")
+        start_time = time.time()
         training_fn = create_training_step(model, l_losses, training_metrics, optimizer)
         calc_loop(train_ds, training_fn, train_mean_losses, training_metrics)
         # Validation
@@ -81,3 +83,5 @@ if __name__ == '__main__':
         if val_acc > best_val:
             best_val = val_acc
             model.save_weights(f'${args["output_dir"]}/checkpoint')
+        end_time = time.time()
+        print(f"After {end_time - start_time}s")
