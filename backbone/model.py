@@ -15,6 +15,8 @@ def build_top(base_net: Model):
     features = layers.Dropout(0.3)(features)
     features = layers.Dense(256, activation='relu', name='dense_1')(features)
     features = layers.Dense(128, activation='relu', name='dense_2')(features)
+    features = layers.Dense(64, activation='relu', name='dense_3')(features)
+
     full_outputs = []
     for disease in l_diseases:
         full_outputs.append(
@@ -28,7 +30,7 @@ def create_model(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3), weights='imagenet'):
     return Model(inputs=[base_net.inputs], outputs=outputs)
 
 
-def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1e-4):
+def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1e-5):
     @tf.function
     def training_step(X, y_true):
         with tf.GradientTape() as tape:
@@ -39,7 +41,7 @@ def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1e-
                 current_loss = l_losses[idx](each_y_true, each_y_pred)
                 total_losses = current_loss + total_losses
                 l_metrics[idx](each_y_true, each_y_pred)
-            kernel_variables = [model.get_layer(name).weights[0] for name in ['dense_1', 'dense_2']]
+            kernel_variables = [model.get_layer(name).weights[0] for name in ['dense_1', 'dense_2', 'dense_3']]
             wd_penalty = decay * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
             wd_penalty = tf.cast(wd_penalty, tf.float64)
             total_losses = total_losses + wd_penalty
@@ -67,7 +69,7 @@ def create_validate_step(model: Model, l_losses, l_metrics):
 def calc_loop(ds, step_fn, mean_loss_fn, metrics_fn, mode='training'):
     print("Processing....")
     for step, (X, y) in enumerate(ds):
-        if (step + 1) % 100 == 0:
+        if (step + 1) % 5000 == 0:
             print(f"\t\t - Loss at step {step}: ", mean_loss_fn.result().numpy())
         losses = step_fn(X, y)
         mean_loss_fn(losses)
