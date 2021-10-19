@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
-from tensorflow.keras.applications import densenet
+from tensorflow.keras.applications import resnet_v2
 
 from static_values.values import IMAGE_SIZE, BATCH_SIZE
 
@@ -20,7 +20,7 @@ def data_augmentation(training=False, image_size=IMAGE_SIZE):
         image_raw = tf.io.read_file(image)
         decoded = tf.image.decode_jpeg(image_raw, channels=3)
         decoded = tf.cast(decoded, tf.float32)
-        tensor = densenet.preprocess_input(decoded)
+        tensor = resnet_v2.preprocess_input(decoded)
         tensor = tf.image.resize(tensor, size=(image_size, image_size))
         if not training:
             return tensor, y

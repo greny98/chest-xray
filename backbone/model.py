@@ -1,22 +1,18 @@
-from tensorflow.keras import layers, regularizers, Model, optimizers, metrics
-from tensorflow.keras.applications import densenet
+from tensorflow.keras import layers, Model
+from tensorflow.keras.applications import resnet_v2
 import tensorflow as tf
 
 from static_values.values import IMAGE_SIZE, l_diseases
 
 
 def load_basenet(input_shape, weights=None):
-    return densenet.DenseNet169(input_shape=input_shape,
+    return resnet_v2.ResNet50V2(input_shape=input_shape,
                                 weights=weights, include_top=False)
 
 
 def build_top(base_net: Model):
     features = layers.GlobalAveragePooling2D()(base_net.output)
     features = layers.Dropout(0.3)(features)
-    features = layers.Dense(256, activation='relu', name='dense_1')(features)
-    features = layers.Dense(128, activation='relu', name='dense_2')(features)
-    features = layers.Dense(64, activation='relu', name='dense_3')(features)
-
     full_outputs = []
     for disease in l_diseases:
         full_outputs.append(
@@ -41,10 +37,10 @@ def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1e-
                 current_loss = l_losses[idx](each_y_true, each_y_pred)
                 total_losses = current_loss + total_losses
                 l_metrics[idx](each_y_true, each_y_pred)
-            kernel_variables = [model.get_layer(name).weights[0] for name in ['dense_1', 'dense_2', 'dense_3']]
-            wd_penalty = decay * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
-            wd_penalty = tf.cast(wd_penalty, tf.float64)
-            total_losses = total_losses + wd_penalty
+            # kernel_variables = [model.get_layer(name).weights[0] for name in ['dense_1', 'dense_2', 'dense_3']]
+            # wd_penalty = decay * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
+            # wd_penalty = tf.cast(wd_penalty, tf.float64)
+            # total_losses = total_losses + wd_penalty
         grads = tape.gradient(total_losses, model.trainable_weights)
         optimizer.apply_gradients(zip(grads, model.trainable_weights))
         return total_losses
