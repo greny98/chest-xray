@@ -1,10 +1,8 @@
 import os
-
-import numpy as np
+import argparse
 from tensorflow.keras import optimizers, metrics
 from backbone.losses import get_losses_weights, create_losses
 from backbone.model import create_model, create_training_step, create_validate_step, calc_loop
-from static_values.values import l_diseases
 from utils.data_generator import create_ds
 from utils.dataframe import read_csv, train_val_split
 
@@ -22,8 +20,25 @@ def reset_states():
         val_metrics[i].reset_states()
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch_size', type=int, default=12)
+    parser.add_argument('--epochs', type=int, default=50)
+    parser.add_argument('--csv_file', type=str)
+    parser.add_argument('--image_dir', type=str, default='images')
+    parser.add_argument('--lr', type=float, default=2.5e-4)
+    parser.add_argument('--output_dir', type=str, default='model')
+    args = vars(parser.parse_args())
+    return args
+
+
 if __name__ == '__main__':
-    images_dir = 'data/images/'
+    args = parse_args()
+    print(args)
+    exit()
+    if not os.path.exists(args['output_dir']):
+        os.mkdir(args['output_dir'])
+    images_dir = args['image_dir']
     # Load csv
     X_train_val_df, y_train_val_df = read_csv('./data/train_val.csv')
     # Split train, val
@@ -40,8 +55,8 @@ if __name__ == '__main__':
     losses_weights = get_losses_weights(y_train)
     l_losses = create_losses(losses_weights)
     # training
-    EPOCHS = 2
-    lr = 1e-4
+    EPOCHS = args['epochs']
+    lr = args['lr']
     lr_decay = 0.975
     train_mean_losses = metrics.Mean('losses')
     val_mean_losses = metrics.Mean(name='val_losses')
@@ -66,4 +81,4 @@ if __name__ == '__main__':
         # Update weight
         if val_acc > best_val:
             best_val = val_acc
-            model.save_weights('models/checkpoint')
+            model.save_weights(f'${args["output_dir"]}/checkpoint')
