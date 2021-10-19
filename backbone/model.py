@@ -65,9 +65,8 @@ def create_validate_step(model: Model, l_losses, l_metrics):
 
 
 def calc_loop(ds, step_fn, mean_loss_fn, metrics_fn, mode='training'):
+    print("Processing....")
     for step, (X, y) in enumerate(ds):
-        if step > 2:
-            break
         losses = step_fn(X, y)
         mean_loss_fn(losses)
     print(f"\t- {mode.capitalize()} Loss: ", mean_loss_fn.result().numpy())
