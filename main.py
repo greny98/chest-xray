@@ -76,7 +76,7 @@ if __name__ == '__main__':
         calc_loop(train_ds, training_fn, train_mean_losses, training_metrics)
         # Validation
         validate_fn = create_validate_step(model, l_losses, val_metrics)
-        val_loss, val_acc = calc_loop(train_ds, training_fn, train_mean_losses, training_metrics, mode='val')
+        val_loss, val_acc = calc_loop(val_ds, validate_fn, val_mean_losses, val_metrics, mode='val')
         # Update weight
         if val_acc > best_val:
             best_val = val_acc
