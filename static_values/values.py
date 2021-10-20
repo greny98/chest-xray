@@ -5,10 +5,10 @@ l_diseases = ['Cardiomegaly', 'Emphysema', 'Effusion', 'Hernia', 'Infiltration',
               'Consolidation']
 
 # Image size default
-IMAGE_SIZE = 360
+IMAGE_SIZE = 448
 
 # Batch size
-BATCH_SIZE = 16
+BATCH_SIZE = 12
 
 # Epochs
 
