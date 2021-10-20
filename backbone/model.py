@@ -17,6 +17,7 @@ def load_basenet(input_shape, name='resnet50v2', weights=None):
 def build_top(base_net: Model):
     features = layers.GlobalAveragePooling2D()(base_net.output)
     features = layers.Dropout(0.3)(features)
+    features = layers.Dense(512, activation='relu', name='dense_features')(features)
     full_outputs = []
     for disease in l_diseases:
         full_outputs.append(
@@ -35,13 +36,15 @@ def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1.0
     def training_step(X, y_true):
         with tf.GradientTape() as tape:
             y_pred = model(X, training=True)
-            total_losses = 0.
+            total_losses = []
             for idx, (each_y_pred, each_y_true) in enumerate(zip(y_pred, y_true)):
                 each_y_pred = tf.reshape(each_y_pred, shape=(-1,))
                 current_loss = l_losses[idx](each_y_true, each_y_pred)
-                total_losses = current_loss + total_losses
+                total_losses.append(current_loss)
                 l_metrics[idx](each_y_true, each_y_pred)
-            kernel_variables = [model.get_layer(name).weights[0] for name in l_diseases]
+            # Calculate weight decay
+            kernel_variables = [model.get_layer('dense_features').weights[0]]
+            kernel_variables = kernel_variables + [model.get_layer(name).weights[0] for name in l_diseases]
             wd_penalty = decay * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
             wd_penalty = tf.cast(wd_penalty, tf.float64)
             total_losses = total_losses + wd_penalty
