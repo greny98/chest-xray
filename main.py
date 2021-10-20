@@ -23,12 +23,13 @@ def reset_states():
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', type=int, default=12)
+    parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--csv_file', type=str)
     parser.add_argument('--image_dir', type=str, default='images')
-    parser.add_argument('--lr', type=float, default=2.5e-4)
+    parser.add_argument('--lr', type=float, default=2e-4)
     parser.add_argument('--output_dir', type=str, default='model')
+    parser.add_argument('--model_name', type=str, default='resnet101v2')
     args = vars(parser.parse_args())
     return args
 
@@ -50,7 +51,7 @@ if __name__ == '__main__':
     train_ds = create_ds(X_train, y_train, images_dir, training=True)
     val_ds = create_ds(X_val, y_val, images_dir)
     # Create model
-    model = create_model()
+    model = create_model(model_name=args['model_name'])
     # Compile with loss
     losses_weights = get_losses_weights(y_train)
     l_losses = create_losses(losses_weights)
