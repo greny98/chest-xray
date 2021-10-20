@@ -83,6 +83,6 @@ if __name__ == '__main__':
         # Update weight
         if val_acc > best_val:
             best_val = val_acc
-            model.save_weights(f'${args["output_dir"]}/checkpoint')
+            model.save_weights(f'{args["output_dir"]}/checkpoint')
         end_time = time.time()
         print(f"After {end_time - start_time}s")
