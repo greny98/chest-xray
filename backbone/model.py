@@ -18,6 +18,7 @@ def build_top(base_net: Model):
     features = layers.GlobalAveragePooling2D()(base_net.output)
     features = layers.Dropout(0.3)(features)
     features = layers.Dense(512, activation='relu', name='dense_features')(features)
+    features = layers.Dropout(0.2)(features)
     full_outputs = []
     for disease in l_diseases:
         full_outputs.append(
@@ -27,21 +28,27 @@ def build_top(base_net: Model):
 
 def create_model(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3), model_name='resnet50v2', weights='imagenet'):
     base_net = load_basenet(input_shape, model_name, weights)
+    base_net.load_weights('ckpt/checkpoint').expect_partial()
     outputs = build_top(base_net)
     return Model(inputs=[base_net.inputs], outputs=outputs)
 
 
 def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1.0e-5):
-    @tf.function
+    # @tf.function
     def training_step(X, y_true):
         with tf.GradientTape() as tape:
             y_pred = model(X, training=True)
-            total_losses = []
+            list_losses = []
             for idx, (each_y_pred, each_y_true) in enumerate(zip(y_pred, y_true)):
                 each_y_pred = tf.reshape(each_y_pred, shape=(-1,))
                 current_loss = l_losses[idx](each_y_true, each_y_pred)
-                total_losses.append(current_loss)
+                list_losses.append(current_loss)
                 l_metrics[idx](each_y_true, each_y_pred)
+            # Set weights for losses
+            list_losses = tf.convert_to_tensor(list_losses)
+            max_value = tf.reduce_max(list_losses)
+            list_losses = list_losses / max_value
+            total_losses = tf.reduce_sum(list_losses)
             # Calculate weight decay
             kernel_variables = [model.get_layer('dense_features').weights[0]]
             kernel_variables = kernel_variables + [model.get_layer(name).weights[0] for name in l_diseases]
@@ -72,8 +79,6 @@ def create_validate_step(model: Model, l_losses, l_metrics):
 def calc_loop(ds, step_fn, mean_loss_fn, metrics_fn, mode='training'):
     print("Processing....")
     for step, (X, y) in enumerate(ds):
-        if (step + 1) % 1000 == 0:
-            print(f"\t\t - Loss at step {step}: ", mean_loss_fn.result().numpy())
         losses = step_fn(X, y)
         mean_loss_fn(losses)
     print(f"\t- {mode.capitalize()} Loss: ", mean_loss_fn.result().numpy())

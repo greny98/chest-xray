@@ -138,5 +138,5 @@ dmypy.json
 cython_debug/
 
 data/images/
-models/
+ckpt/
 .idea
