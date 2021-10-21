@@ -46,6 +46,7 @@ def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1.0
                 l_metrics[idx](each_y_true, each_y_pred)
             # Set weights for losses
             list_losses = tf.convert_to_tensor(list_losses)
+            loss_to_return = tf.reduce_sum(list_losses)
             max_value = tf.reduce_max(list_losses)
             list_losses = list_losses / max_value
             total_losses = tf.reduce_sum(list_losses)
@@ -57,7 +58,7 @@ def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1.0
             total_losses = total_losses + wd_penalty
         grads = tape.gradient(total_losses, model.trainable_weights)
         optimizer.apply_gradients(zip(grads, model.trainable_weights))
-        return total_losses
+        return loss_to_return + wd_penalty
 
     return training_step
 
