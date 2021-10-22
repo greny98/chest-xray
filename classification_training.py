@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument('--image_dir', type=str, default='images')
     parser.add_argument('--lr', type=float, default=2e-4)
     parser.add_argument('--output_dir', type=str, default='model')
-    parser.add_argument('--model_name', type=str, default='resnet50v2')
+    parser.add_argument('--model_name', type=str, default='resnet101v2')
     args = vars(parser.parse_args())
     return args
 

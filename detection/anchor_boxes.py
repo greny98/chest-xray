@@ -1,3 +1,5 @@
+from tensorflow.python.keras.applications import densenet
+
 from utils import box_utils
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
@@ -57,13 +59,20 @@ class LabelEncoder:
             iou = box_utils.calc_IoU(gt_box_cen, anchor_cen)
             iou_anchor2gt.append(iou)
         iou_anchor2gt = tf.stack(iou_anchor2gt, axis=1)
+        # Get best IoU
+        rows = tf.range(0, self.anchor_boxes.total_dims / 4, dtype=tf.int32)
         arg_max_iou = tf.argmax(iou_anchor2gt, axis=1)
-        # Label for anchor boxes
-        anchor_box_labels = []
-        for label, iou in zip(arg_max_iou, iou_anchor2gt):
-            best_iou = tf.gather(iou, label)
-            if best_iou >= iou_threshold:
-                anchor_box_labels.append(to_categorical(gt_classes[label], self.num_classes))
-            else:
-                anchor_box_labels.append(to_categorical(0, self.num_classes))
+        arg_max_iou = tf.cast(arg_max_iou, tf.int32)
+        best_iou = tf.gather_nd(
+            iou_anchor2gt,
+            tf.stack([rows, arg_max_iou], axis=1))
+        # TODO: Labeled for anchor boxes
+        # Find anchor boxes that has iou >= iou_threshold
+        negative_indices = tf.cast(tf.where(best_iou < iou_threshold), tf.int32)
+        anchor_boxes_classes = tf.tensor_scatter_nd_update(
+            tf.expand_dims(tf.gather(gt_classes, arg_max_iou), axis=1),
+            negative_indices,
+            tf.zeros_like(negative_indices))
+        anchor_boxes_classes = tf.reshape(anchor_boxes_classes, shape=(-1,))
+        matched_gt_boxes = tf.gather_nd(gt_boxes, tf.expand_dims(arg_max_iou, axis=-1))
         # TODO: Tính offsets cho anchor box từ ground truth and return both classes and offsets
