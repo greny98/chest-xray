@@ -1,26 +1,21 @@
 from tensorflow.keras import layers, Model
 from tensorflow.keras.applications import resnet_v2
 import tensorflow as tf
+from tensorflow.python.keras.applications import densenet
 
 from static_values.values import IMAGE_SIZE, l_diseases
 
 
-def load_basenet(input_shape, name='resnet50v2', weights=None):
-    if name == 'resnet50v2':
-        return resnet_v2.ResNet50V2(input_shape=input_shape,
-                                    weights=weights, include_top=False)
-    elif name == 'resnet101v2':
-        return resnet_v2.ResNet101V2(input_shape=input_shape,
-                                     weights=weights, include_top=False)
+def load_basenet(input_shape):
+    return densenet.DenseNet201(input_shape, include_top=False, weights=None)
 
 
 def build_top(base_net: Model):
     features = layers.GlobalAveragePooling2D()(base_net.output)
-    features = layers.Dropout(0.3)(features)
+    features = layers.Dropout(0.2)(features)
     features = layers.Dense(1024, activation='relu', name='dense_features1')(features)
-    features = layers.Dropout(0.2)(features)
+    features = layers.Dropout(0.1)(features)
     features = layers.Dense(512, activation='relu', name='dense_features2')(features)
-    features = layers.Dropout(0.2)(features)
     full_outputs = []
     for disease in l_diseases:
         full_outputs.append(
@@ -28,15 +23,15 @@ def build_top(base_net: Model):
     return full_outputs
 
 
-def create_model(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3), model_name='resnet50v2', weights='imagenet'):
-    base_net = load_basenet(input_shape, model_name, weights)
+def create_model(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3)):
+    base_net = load_basenet(input_shape)
     # base_net.load_weights('ckpt/checkpoint').expect_partial()
     outputs = build_top(base_net)
     return Model(inputs=[base_net.inputs], outputs=outputs)
 
 
 def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=5.0e-5):
-    # @tf.function
+    @tf.function
     def training_step(X, y_true):
         with tf.GradientTape() as tape:
             y_pred = model(X, training=True)

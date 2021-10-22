@@ -29,7 +29,6 @@ def parse_args():
     parser.add_argument('--image_dir', type=str, default='images')
     parser.add_argument('--lr', type=float, default=2e-4)
     parser.add_argument('--output_dir', type=str, default='model')
-    parser.add_argument('--model_name', type=str, default='resnet101v2')
     args = vars(parser.parse_args())
     return args
 
@@ -51,7 +50,7 @@ if __name__ == '__main__':
     train_ds = create_ds(X_train, y_train, images_dir, training=True)
     val_ds = create_ds(X_val, y_val, images_dir)
     # Create model
-    model = create_model(model_name=args['model_name'])
+    model = create_model()
     # Compile with loss
     losses_weights = get_losses_weights(y_train)
     l_losses = create_losses(losses_weights)

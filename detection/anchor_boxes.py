@@ -44,6 +44,15 @@ class LabelEncoder:
         self.anchor_boxes = AnchorBoxes(steps=[56, 28, 14, 7, 3, 1])
         self.num_classes = num_classes + 1  # 0 for background
 
+    def compute_offsets(self, matched_gt_boxes):
+        # sigma_center = 0.1
+        # sigma_size = 0.2
+        off_cx = (matched_gt_boxes[:, 0] - self.anchor_boxes.boxes[:, 0]) / self.anchor_boxes.boxes[:, 2]
+        off_cy = (matched_gt_boxes[:, 1] - self.anchor_boxes.boxes[:, 1]) / self.anchor_boxes.boxes[:, 3]
+        off_w = tf.math.log(matched_gt_boxes[:, 2] / self.anchor_boxes.boxes[:, 2])
+        off_h = tf.math.log(matched_gt_boxes[:, 3] / self.anchor_boxes.boxes[:, 3])
+        return tf.stack([off_cx, off_cy, off_w, off_h], axis=1)
+
     def matching(self, gt_boxes, gt_classes, iou_threshold=0.5):
         """
         Matching ground truth boxes and anchor boxes
@@ -75,4 +84,6 @@ class LabelEncoder:
             tf.zeros_like(negative_indices))
         anchor_boxes_classes = tf.reshape(anchor_boxes_classes, shape=(-1,))
         matched_gt_boxes = tf.gather_nd(gt_boxes, tf.expand_dims(arg_max_iou, axis=-1))
-        # TODO: Tính offsets cho anchor box từ ground truth and return both classes and offsets
+        # TODO: Compute offsets for anchor box from ground truth and return both classes and offsets
+        offsets = self.compute_offsets(matched_gt_boxes)
+        return offsets, to_categorical(anchor_boxes_classes, self.num_classes)
