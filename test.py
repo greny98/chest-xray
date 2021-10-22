@@ -1,7 +1,4 @@
-import math
+import tensorflow as tf
 
-truth = [1., 0., 0.]
-pred = [0.4829358, 0.24769434, 0.26936984]
-
-res = -0.25 * 1 * ((1 - 0.4829358) ** 2) * math.log(0.4829358 + 1e-7)
-print(res, 0.04865009)
+tensor = tf.convert_to_tensor([1, 2, 3])
+print(2 ** tensor)

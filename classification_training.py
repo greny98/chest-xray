@@ -57,7 +57,7 @@ if __name__ == '__main__':
     # training
     EPOCHS = args['epochs']
     lr = args['lr']
-    lr_decay = 0.975
+    lr_decay = 0.97
     train_mean_losses = metrics.Mean('losses')
     val_mean_losses = metrics.Mean(name='val_losses')
     training_metrics = [metrics.BinaryAccuracy(name='acc') for _ in range(len(l_losses))]

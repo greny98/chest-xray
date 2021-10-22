@@ -1,21 +1,16 @@
 from tensorflow.keras import layers, Model
 from tensorflow.keras.applications import densenet
 import tensorflow as tf
+
 from static_values.values import IMAGE_SIZE, l_diseases
 
 
 def load_basenet(input_shape):
-    return densenet.DenseNet201(input_shape=input_shape, include_top=False, weights=None)
+    return densenet.DenseNet169(input_shape=input_shape, include_top=False, weights='imagenet')
 
 
 def build_top(base_net: Model):
     features = layers.GlobalAveragePooling2D()(base_net.output)
-    features = layers.Dropout(0.3)(features)
-    features = layers.Dense(512, activation='relu', name='dense_features1')(features)
-    features = layers.Dropout(0.1)(features)
-    features = layers.Dense(256, activation='relu', name='dense_features2')(features)
-    features = layers.Dropout(0.1)(features)
-    features = layers.Dense(128, activation='relu', name='dense_features3')(features)
     full_outputs = []
     for disease in l_diseases:
         full_outputs.append(
@@ -41,16 +36,10 @@ def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1.0
                 total_losses += current_loss
                 l_metrics[idx](each_y_true, each_y_pred)
             # Calculate weight decay
-            kernel_variables = [model.get_layer('dense_features1').weights[0],
-                                model.get_layer('dense_features2').weights[0]]
-            wd_penalty = decay * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
+            kernel_variables = [model.get_layer(name).weights[0] for name in l_diseases]
+            wd_penalty = (decay / 4) * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
             wd_penalty = tf.cast(wd_penalty, tf.float64)
             total_losses += wd_penalty
-            # weight decay for classification
-            # kernel_variables = [model.get_layer(name).weights[0] for name in l_diseases]
-            # wd_penalty = (decay / 4) * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
-            # wd_penalty = tf.cast(wd_penalty, tf.float64)
-            # total_losses += wd_penalty
         grads = tape.gradient(total_losses, model.trainable_weights)
         optimizer.apply_gradients(zip(grads, model.trainable_weights))
         return total_losses

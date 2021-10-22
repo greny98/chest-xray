@@ -5,7 +5,7 @@ from static_values.values import IMAGE_SIZE
 
 def get_backbone(weights=None):
     if (weights is None) or (weights == 'imagenet'):
-        base_net = load_basenet(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3), weights=weights)
+        base_net = load_basenet(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3))
     else:
         base_net = load_basenet(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3))
         base_net.load_weights(weights).expect_partial()
