@@ -37,7 +37,7 @@ def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=1.0
                 l_metrics[idx](each_y_true, each_y_pred)
             # Calculate weight decay
             kernel_variables = [model.get_layer(name).weights[0] for name in l_diseases]
-            wd_penalty = (decay / 4) * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
+            wd_penalty = decay * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
             wd_penalty = tf.cast(wd_penalty, tf.float64)
             total_losses += wd_penalty
         grads = tape.gradient(total_losses, model.trainable_weights)
