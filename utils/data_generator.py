@@ -31,11 +31,11 @@ class ClassificationGenerator(Sequence):
         self.training = training
         if training:
             self.transform = augment.Compose([
-                augment.RandomBrightnessContrast(),
+                augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
                 augment.RandomRotate90(p=0.3),
                 augment.RandomScale(0.15),
-                augment.RandomSnow(p=0.25),
-                augment.RandomFog(p=0.25),
+                # augment.RandomSnow(p=0.25),
+                # augment.RandomFog(p=0.25),
                 augment.RandomCrop(800, 800, p=0.25),
                 augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
             ])
