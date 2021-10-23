@@ -5,11 +5,14 @@ import tensorflow as tf
 def create_focal_loss(batch_size):
     """
     Create focal loss
-        - TODO: Tính focal loss theo công thức cho toàn bộ batch
-        - TODO: Chọn
+        - Tính focal loss theo công thức cho toàn bộ batch
+        - Chọn positive loss, negative loss cho mỗi ảnh (1:3)
+        - Tính tổng loss cho mỗi ảnh
+        - Tính mean của batch
     :param batch_size:
-    :return:
+    :return: focal_loss
     """
+
     def focal_loss(y_true, y_pred):
         # batch, num_boxes, num_classes
         gamma = 2.
@@ -17,23 +20,40 @@ def create_focal_loss(batch_size):
         epsilon = 1e-7
         loss = -alpha * y_true * tf.pow(1 - y_pred, gamma) * tf.math.log(y_pred + epsilon)
         loss = tf.reduce_sum(loss, axis=-1)
-        print("==== loss", loss)
-        # Tìm loss positive
+        # Tính loss positive và negative
         positive_indices = tf.where(y_true[:, :, 0] == 0)
-        total_losses = 0.
+        negative_indices = tf.where(y_true[:, :, 0] == 1)
+        batch_losses = []
         for i in range(batch_size):
+            # positive loss
             batch_indices = tf.reshape(tf.where(positive_indices[:, 0] == i), shape=(-1,))
-            batch_positives = tf.gather(positive_indices, batch_indices)
-            loss_positive = tf.gather_nd(loss, batch_positives)
-            total_losses += tf.reduce_sum(loss_positive)
-        # Tìm loss negative
-
-        # Chọn loss negative cao nhất
-
-        return tf.reduce_mean(loss)
+            batch_positive = tf.gather(positive_indices, batch_indices)
+            loss_positive = tf.gather_nd(loss, batch_positive)
+            # negative loss
+            batch_indices = tf.reshape(tf.where(negative_indices[:, 0] == i), shape=(-1,))
+            batch_negative = tf.gather(negative_indices, batch_indices)
+            loss_negative = tf.gather_nd(loss, batch_negative)
+            loss_negative = tf.sort(loss_negative, direction='DESCENDING')
+            # lấy số mẫu negative gấp 3 lần positive
+            n_neg = 3 * loss_positive.get_shape()[0]
+            sample_loss = tf.reduce_sum(loss_positive) + tf.reduce_sum(loss_negative[:n_neg])
+            batch_losses.append(sample_loss)
+        return tf.convert_to_tensor(batch_losses), positive_indices
 
     return focal_loss
 
 
-def loc_losses(y_true, y_pred):
-    l1_smooths = losses.huber(y_true, y_pred)
+def create_loc_loss(batch_size):
+    def loc_loss(y_true, y_pred, positive_indices):
+        l1_smooths = []
+        print("+ positive_indices", positive_indices)
+        for i in range(batch_size):
+            batch_indices = tf.reshape(tf.where(positive_indices[:, 0] == i), shape=(-1,))
+            print("+ batch_indices", batch_indices)
+            batch_positive = tf.gather(positive_indices, batch_indices)
+            y_true = tf.gather_nd(y_true, batch_positive)
+            y_pred = tf.gather_nd(y_pred, batch_positive)
+            l1_smooths.append(losses.Huber(reduction=losses.Reduction.SUM)(y_true, y_pred))
+        return tf.convert_to_tensor(l1_smooths)
+
+    return loc_loss

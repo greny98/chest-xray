@@ -2,7 +2,7 @@ from skmultilearn.model_selection import iterative_train_test_split
 import numpy as np
 import pandas as pd
 
-from static_values.values import l_diseases
+from static_values.values import l_diseases, object_names2idx
 
 
 def split_labels(df: pd.DataFrame):
@@ -16,9 +16,26 @@ def split_labels(df: pd.DataFrame):
     return X_col, y_cols
 
 
-def read_csv(filename: str):
+def create_bboxes(df):
+    images = df['image_idx'].unique()
+    images_dict = {key: {} for key in images}
+    for image in images_dict.keys():
+        image_box_df = df[df['image_idx'] == image]
+        images_dict[image] = {
+            "bboxes": image_box_df[['box_left', 'box_top',
+                                    'box_width', 'box_height']].values,
+            "labels": [object_names2idx[label]
+                       for label in image_box_df['finding_label'].values]
+        }
+    return images_dict
+
+
+def read_csv(filename: str, mode='classify'):
     df = pd.read_csv(filename)
-    return split_labels(df)
+    if mode == 'classify':
+        return split_labels(df)
+    elif mode == 'detect':
+        return create_bboxes(df)
 
 
 def train_val_split(X_train_val, y_train_val, test_size=0.1, log=True):

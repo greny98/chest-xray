@@ -10,4 +10,6 @@ IMAGE_SIZE = 320
 # Batch size
 BATCH_SIZE = 20
 
-# Epochs
+object_names = ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltrate', 'Mass',
+                'Nodule', 'Pneumonia', 'Pneumothorax']
+object_names2idx = {key: idx + 1 for idx, key in enumerate(object_names)}

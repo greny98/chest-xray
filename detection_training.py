@@ -1,5 +1,6 @@
 from detection.anchor_boxes import AnchorBoxes, LabelEncoder
 import tensorflow as tf
+from detection.losses import create_focal_loss, create_loc_loss
 
 from tensorflow.keras.utils import to_categorical
 
@@ -15,11 +16,11 @@ from tensorflow.keras.utils import to_categorical
 # gt_classes = tf.convert_to_tensor([1, 2, 1])
 #
 # offsets, classes = label_encoder.matching(gt_boxes, gt_classes)
-from detection.losses import create_focal_loss
+# print(offsets)
 
 rand = tf.random.uniform(shape=(2, 3, 3), dtype=tf.float64)
-y_pred = tf.nn.softmax(rand, axis=-1)
-y_true = tf.convert_to_tensor([
+c_pred = tf.nn.softmax(rand, axis=-1)
+c_true = tf.convert_to_tensor([
     [
         [0, 0, 1],
         [1, 0, 0],
@@ -32,5 +33,34 @@ y_true = tf.convert_to_tensor([
     ]
 
 ], tf.float64)
-focal_loss = create_focal_loss(batch_size=2)
-conf_loss = focal_loss(y_true, rand)
+
+loc_pred = tf.convert_to_tensor([
+    [
+        [0, 0, 0.5, 0.5],
+        [0.1, 0.1, 0.2, 0.3],
+        [0.25, 0.1, 0.35, 0.25],
+    ],
+    [
+        [0.15, 0.1, 0.3, 0.3],
+        [0.1, 0.3, 0.2, 0.3],
+        [0.25, 0.25, 0.15, 0.25],
+    ]
+], tf.float64)
+loc_true = tf.convert_to_tensor([
+    [
+        [0.1, 0.1, 0.4, 0.4],
+        [0.15, 0.21, 0.21, 0.33],
+        [0.2, 0.12, 0.5, 0.35],
+    ],
+    [
+        [0.15, 0.1, 0.3, 0.3],
+        [0.1, 0.1, 0.4, 0.15],
+        [0.35, 0.15, 0.25, 0.25],
+    ]
+], tf.float64)
+
+focal_loss_fn = create_focal_loss(batch_size=2)
+loc_loss_fn = create_loc_loss(batch_size=2)
+conf_loss, pos_indices = focal_loss_fn(c_true, c_pred)
+loc_loss = loc_loss_fn(loc_true, loc_pred, pos_indices)
+print(conf_loss, loc_loss)
