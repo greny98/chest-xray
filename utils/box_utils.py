@@ -40,7 +40,8 @@ def calc_IoU(boxes1, boxes2, mode='corner', reduce_mean=False):
     if mode == 'center':
         boxes1 = center_to_corners(boxes1)
         boxes2 = center_to_corners(boxes2)
-
+    boxes1 = tf.cast(boxes1, tf.float32)
+    boxes2 = tf.cast(boxes2, tf.float32)
     # Calculate Intersection
     inter_xmin, inter_ymin = tf.maximum(boxes1[:, 0], boxes2[:, 0]), tf.maximum(boxes1[:, 1], boxes2[:, 1])
     inter_xmax, inter_ymax = tf.minimum(boxes1[:, 2], boxes2[:, 2]), tf.minimum(boxes1[:, 3], boxes2[:, 3])

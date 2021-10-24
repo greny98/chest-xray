@@ -21,6 +21,7 @@ def create_bboxes(df):
     images_dict = {key: {} for key in images}
     for image in images_dict.keys():
         image_box_df = df[df['image_idx'] == image]
+
         images_dict[image] = {
             "bboxes": image_box_df[['box_left', 'box_top',
                                     'box_width', 'box_height']].values,

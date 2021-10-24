@@ -63,9 +63,9 @@ class LabelEncoder:
         """
         iou_anchor2gt = []
         for idx, gt_box in enumerate(gt_boxes):
-            gt_box_cen = box_utils.center_to_corners(tf.expand_dims(gt_box, axis=0))
-            anchor_cen = box_utils.center_to_corners(self.anchor_boxes.boxes)
-            iou = box_utils.calc_IoU(gt_box_cen, anchor_cen)
+            # Tính IoU của anchor_boxes với tất cả gt_boxes
+            iou = box_utils.calc_IoU(tf.expand_dims(gt_box, axis=0),
+                                     self.anchor_boxes.boxes, mode='center')
             iou_anchor2gt.append(iou)
         iou_anchor2gt = tf.stack(iou_anchor2gt, axis=1)
         # Get best IoU
@@ -75,7 +75,7 @@ class LabelEncoder:
         best_iou = tf.gather_nd(
             iou_anchor2gt,
             tf.stack([rows, arg_max_iou], axis=1))
-        # TODO: Labeled for anchor boxes
+        # Labeled for anchor boxes
         # Find anchor boxes that has iou >= iou_threshold
         negative_indices = tf.cast(tf.where(best_iou < iou_threshold), tf.int32)
         anchor_boxes_classes = tf.tensor_scatter_nd_update(

@@ -3,7 +3,7 @@ import argparse
 from tensorflow.keras import optimizers, metrics
 from backbone.losses import get_losses_weights, create_losses
 from backbone.model import create_model, create_training_step, create_validate_step, calc_loop
-from utils.data_generator import ClassificationGenerator
+from utils.data_generator import ClassificationGenerator, ClassifyGenerator
 from utils.dataframe import read_csv, train_val_split
 import time
 
@@ -49,8 +49,8 @@ if __name__ == '__main__':
     # Create ds
     # train_ds = create_ds(X_train, y_train, images_dir, training=True)
     # val_ds = create_ds(X_val, y_val, images_dir)
-    train_ds = ClassificationGenerator(X_train, y_train, images_dir)
-    val_ds = ClassificationGenerator(X_val, y_val, images_dir)
+    train_ds = ClassifyGenerator(X_train, y_train, images_dir, training=True)
+    val_ds = ClassifyGenerator(X_val, y_val, images_dir, training=False)
     # Create model
     model = create_model()
     # Compile with loss
