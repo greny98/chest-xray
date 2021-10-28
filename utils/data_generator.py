@@ -11,12 +11,10 @@ autotune = tf.data.AUTOTUNE
 def classify_augmentation(training=False):
     if training:
         transform = augment.Compose([
-            augment.ImageCompression(quality_lower=70, quality_upper=100, p=0.4),
+            augment.ImageCompression(quality_lower=90, quality_upper=100, p=0.4),
             augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
-            augment.ShiftScaleRotate(shift_limit=0.025, scale_limit=0.025, rotate_limit=90),
+            augment.ShiftScaleRotate(shift_limit=0.025, scale_limit=0.025, rotate_limit=45),
             augment.GaussNoise(p=0.4),
-            # augment.RandomRain(p=0.3),
-            augment.RandomCrop(1000, 1000, p=0.4),
             augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
         ])
     else:
@@ -58,10 +56,10 @@ def ClassifyGenerator(images, y, image_dir, training=False, batch_size=BATCH_SIZ
 def detect_augmentation(label_encoder, training):
     if training:
         transform = augment.Compose([
-            augment.ImageCompression(quality_lower=75, quality_upper=100, p=0.35),
+            augment.ImageCompression(quality_lower=90, quality_upper=100, p=0.35),
             augment.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.4),
-            augment.ShiftScaleRotate(shift_limit=0.01, scale_limit=0.01, rotate_limit=15),
-            augment.GaussNoise(p=0.35),
+            augment.ShiftScaleRotate(shift_limit=0.02, scale_limit=0.02, rotate_limit=20),
+            augment.GaussNoise(p=0.45),
             augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
         ], bbox_params=augment.BboxParams(format='coco'))
     else:
@@ -83,8 +81,10 @@ def detect_augmentation(label_encoder, training):
         # extract transformed image
         aug_img = transformed['image']
         aug_img = tf.cast(aug_img, tf.float32)
-        aug_img = densenet.preprocess_input(aug_img)
-        aug_img = tf.cast(aug_img, tf.float32)
+
+        # aug_img = densenet.preprocess_input(aug_img)
+        # aug_img = tf.cast(aug_img, tf.float32)
+
         # extract transformed bboxes
         bboxes_transformed = []
         for x, y, w, h, _ in transformed['bboxes']:
@@ -94,8 +94,9 @@ def detect_augmentation(label_encoder, training):
             h = h / IMAGE_SIZE
             bboxes_transformed.append(tf.convert_to_tensor([cx, cy, w, h], tf.float32))
         offset, label_oh = label_encoder.matching(bboxes_transformed, labels)
-        return [aug_img, tf.convert_to_tensor(offset, tf.float32),
-                tf.convert_to_tensor(label_oh, tf.float32)]
+        # return [aug_img, tf.convert_to_tensor(offset, tf.float32),
+        #         tf.convert_to_tensor(label_oh, tf.float32)]
+        return aug_img, bboxes_transformed
 
     return preprocess_image
 
@@ -124,10 +125,13 @@ def DetectionGenerator(images_info: dict, image_dir, label_encoder, training=Fal
 
     # Create dataset with process
     def process_data(image_file, y):
-        aug_image, offsets, labels_oh = tf.numpy_function(func=detect_augmentation(label_encoder, training),
+        # aug_image, offsets, labels_oh = tf.numpy_function(func=detect_augmentation(label_encoder, training),
+        #                                                   inp=[image_file, y[0], y[1], y[2]],
+        #                                                   Tout=[tf.float32, tf.float32, tf.float32])
+        aug_image, bboxes_transformed = tf.numpy_function(func=detect_augmentation(label_encoder, training),
                                                           inp=[image_file, y[0], y[1], y[2]],
-                                                          Tout=[tf.float32, tf.float32, tf.float32])
-        return aug_image, offsets, labels_oh
+                                                          Tout=[tf.float32, tf.float32])
+        return aug_image, bboxes_transformed
 
     ds = tf.data.Dataset.zip((image_files_slices, y_slices))
     ds = ds.shuffle(16 * batch_size, reshuffle_each_iteration=training)
