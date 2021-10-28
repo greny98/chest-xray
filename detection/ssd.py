@@ -1,5 +1,4 @@
 import tensorflow as tf
-from keras.metrics import Mean
 from tensorflow.keras import layers, Sequential, Input, Model, optimizers as Opt
 from detection.feature_pyramid import FeaturePyramid, get_backbone
 from detection.losses import create_focal_loss, create_l1_smooth_loss

@@ -9,7 +9,7 @@ class AnchorBoxes:
         self.steps = steps
         self.feature_widths = [1. / step for step in self.steps]
         self.aspect_ratios = [0.5, 1., 2.]
-        self.scales = [2 ** x for x in [0, 1 / 3, 2 / 3]]
+        self.scales = [2 ** x for x in [0, 1 / 4, 2 / 4, 3 / 4]]
         self.boxes = self.gen_anchor_boxes()
         self.total_dims = self.get_total_dims()
 
@@ -51,7 +51,7 @@ class LabelEncoder:
         off_h = tf.math.log(matched_gt_boxes[:, 3] / self.anchor_boxes.boxes[:, 3])
         return tf.stack([off_cx, off_cy, off_w, off_h], axis=1)
 
-    def matching(self, gt_boxes, gt_classes, iou_threshold=0.3):
+    def matching(self, gt_boxes, gt_classes, iou_threshold=0.25):
         """
         Matching ground truth boxes and anchor boxes
         :param gt_boxes:
