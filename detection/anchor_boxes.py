@@ -1,4 +1,4 @@
-from static_values.values import STEPS, BATCH_SIZE
+from static_values.values import STEPS, BATCH_SIZE, object_names
 from utils import box_utils
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
@@ -40,7 +40,7 @@ class AnchorBoxes:
 
 # ======================================================================================================================
 class LabelEncoder:
-    def __init__(self, num_classes, steps=STEPS):
+    def __init__(self, num_classes=len(object_names), steps=STEPS):
         self.anchor_boxes = AnchorBoxes(steps)
         self.num_classes = num_classes + 1  # 0 for background
 
@@ -51,7 +51,7 @@ class LabelEncoder:
         off_h = tf.math.log(matched_gt_boxes[:, 3] / self.anchor_boxes.boxes[:, 3])
         return tf.stack([off_cx, off_cy, off_w, off_h], axis=1)
 
-    def matching(self, gt_boxes, gt_classes, iou_threshold=0.5):
+    def matching(self, gt_boxes, gt_classes, iou_threshold=0.3):
         """
         Matching ground truth boxes and anchor boxes
         :param gt_boxes:

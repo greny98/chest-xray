@@ -8,7 +8,7 @@ l_diseases = ['Cardiomegaly', 'Emphysema', 'Effusion', 'Hernia', 'Infiltration',
 IMAGE_SIZE = 320
 
 # Batch size
-BATCH_SIZE = 20
+BATCH_SIZE = 3
 
 object_names = ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltrate', 'Mass',
                 'Nodule', 'Pneumonia', 'Pneumothorax']
