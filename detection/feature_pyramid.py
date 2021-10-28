@@ -27,7 +27,7 @@ def pyramid_block(l_layers):
 
 
 def FeaturePyramid(backbone: Model):
-    backbone.load_weights('ckpt/checkpoint')
+    backbone.load_weights('ckpt/checkpoint').expect_partial()
     # freeze backbone
     for l in backbone.layers:
         l.trainable = False

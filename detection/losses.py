@@ -16,7 +16,7 @@ def create_focal_loss(batch_size=BATCH_SIZE):
     """
 
     def focal_loss(y_true, y_pred):
-        print(y_true, y_pred)
+        # print(y_true, y_pred)
         # batch, num_boxes, num_classes
         gamma = 2.
         alpha = 0.25
@@ -51,7 +51,7 @@ def create_l1_smooth_loss(batch_size=BATCH_SIZE):
         # Tính loss của positive boxes và top các negative có loss cao
         l1_smooths = []
         for i in range(batch_size):
-            batch_indices = tf.reshape(tf.where(positive_indices[:, 0] == i), shape=(-1,1))
+            batch_indices = tf.reshape(tf.where(positive_indices[:, 0] == i), shape=(-1, 1))
             batch_positive = tf.gather_nd(positive_indices, batch_indices)
             y_true_batch = tf.gather_nd(y_true, batch_positive)
             y_pred_batch = tf.gather_nd(y_pred, batch_positive)

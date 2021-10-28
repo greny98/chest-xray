@@ -17,7 +17,7 @@ def build_head(num_filters):
 
 def ssd_head(features):
     num_classes = len(object_names) + 1
-    num_anchor_boxes = 9
+    num_anchor_boxes = 12
     classify_head = build_head(num_anchor_boxes * num_classes)
     detect_head = build_head(num_anchor_boxes * 4)
     classes_outs = []
@@ -75,8 +75,8 @@ def create_val_fn(model: Model):
 
 def calc_loop(ds, step_fn, total_mean_fn, classify_mean_fn, localize_mean_fn, mode='training'):
     print("Processing....")
-    for step, (X, y) in enumerate(ds):
-        losses = step_fn(X, y)
+    for step, [X, offsets, labels_oh] in enumerate(ds):
+        losses = step_fn(X, offsets, labels_oh)
         total_mean_fn(losses["total_losses"])
         classify_mean_fn(losses["classify_losses"])
         localize_mean_fn(losses["localize_losses"])
