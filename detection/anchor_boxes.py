@@ -51,7 +51,7 @@ class LabelEncoder:
         off_h = tf.math.log(matched_gt_boxes[:, 3] / self.anchor_boxes.boxes[:, 3])
         return tf.stack([off_cx, off_cy, off_w, off_h], axis=1)
 
-    def matching(self, gt_boxes, gt_classes, iou_threshold=0.25):
+    def matching(self, gt_boxes, gt_classes, iou_threshold=0.4):
         """
         Matching ground truth boxes and anchor boxes
         :param gt_boxes:

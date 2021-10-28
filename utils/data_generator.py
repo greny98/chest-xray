@@ -13,10 +13,10 @@ def classify_augmentation(training=False):
         transform = augment.Compose([
             augment.ImageCompression(quality_lower=70, quality_upper=100, p=0.4),
             augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
-            augment.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=90),
+            augment.ShiftScaleRotate(shift_limit=0.025, scale_limit=0.025, rotate_limit=90),
             augment.GaussNoise(p=0.4),
             # augment.RandomRain(p=0.3),
-            augment.RandomCrop(800, 800, p=0.4),
+            augment.RandomCrop(1000, 1000, p=0.4),
             augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
         ])
     else:
@@ -58,12 +58,11 @@ def ClassifyGenerator(images, y, image_dir, training=False, batch_size=BATCH_SIZ
 def detect_augmentation(label_encoder, training):
     if training:
         transform = augment.Compose([
-            augment.ImageCompression(quality_lower=75, quality_upper=100, p=0.25),
-            augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
-            augment.Rotate(limit=60, p=0.4),
-            augment.RandomScale(0.15),
-            augment.GaussNoise(p=0.25),
-            augment.RandomCrop(800, 800, p=0.25),
+            augment.ImageCompression(quality_lower=75, quality_upper=100, p=0.35),
+            augment.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.4),
+            augment.ShiftScaleRotate(shift_limit=0.02, scale_limit=0.02, rotate_limit=45),
+            augment.GaussNoise(p=0.35),
+            augment.RandomCrop(1000, 1000, p=0.35),
             augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
         ], bbox_params=augment.BboxParams(format='coco'))
     else:
@@ -90,8 +89,8 @@ def detect_augmentation(label_encoder, training):
         # extract transformed bboxes
         bboxes_transformed = []
         for x, y, w, h, _ in transformed['bboxes']:
-            cx = (x + w / 2) / IMAGE_SIZE
-            cy = (y + h / 2) / IMAGE_SIZE
+            cx = (x + 0.5 * w) / IMAGE_SIZE
+            cy = (y + 0.5 * h) / IMAGE_SIZE
             w = w / IMAGE_SIZE
             h = h / IMAGE_SIZE
             bboxes_transformed.append(tf.convert_to_tensor([cx, cy, w, h], tf.float32))
