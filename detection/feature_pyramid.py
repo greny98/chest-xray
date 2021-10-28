@@ -28,9 +28,6 @@ def pyramid_block(l_layers):
 
 def FeaturePyramid(backbone: Model):
     backbone.load_weights('ckpt/checkpoint').expect_partial()
-    # freeze backbone
-    for l in backbone.layers:
-        l.trainable = False
     # pool_out1=(40x40) - pool_out2=(20x20) - pool_out3=(10x10) - pool_out4=(5x5)
     pool_out1, pool_out2, pool_out3, pool_out4 = backbone.outputs
     # Change all to 256 units

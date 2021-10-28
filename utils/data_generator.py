@@ -60,9 +60,8 @@ def detect_augmentation(label_encoder, training):
         transform = augment.Compose([
             augment.ImageCompression(quality_lower=75, quality_upper=100, p=0.35),
             augment.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.4),
-            augment.ShiftScaleRotate(shift_limit=0.02, scale_limit=0.02, rotate_limit=45),
+            augment.ShiftScaleRotate(shift_limit=0.01, scale_limit=0.01, rotate_limit=15),
             augment.GaussNoise(p=0.35),
-            augment.RandomCrop(1000, 1000, p=0.35),
             augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
         ], bbox_params=augment.BboxParams(format='coco'))
     else:

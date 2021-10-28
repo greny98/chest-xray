@@ -47,8 +47,10 @@ if __name__ == '__main__':
     label_encoder = LabelEncoder()
     train_image_info = read_csv(args["train_csv"], mode='detect')
     val_image_info = read_csv(args["val_csv"], mode='detect')
-    train_ds = DetectionGenerator(train_image_info, images_dir, label_encoder=label_encoder, training=True)
-    val_ds = DetectionGenerator(val_image_info, images_dir, label_encoder=label_encoder, training=True)
+    train_ds = DetectionGenerator(train_image_info, images_dir, label_encoder=label_encoder, training=True,
+                                  batch_size=args["batch_size"])
+    val_ds = DetectionGenerator(val_image_info, images_dir, label_encoder=label_encoder, training=False,
+                                batch_size=args["batch_size"])
     # Create Model
     ssd_model = create_ssd_model()
     EPOCHS = args['epochs']
