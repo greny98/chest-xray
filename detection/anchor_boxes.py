@@ -107,17 +107,25 @@ class PredictionDecoder:
         # labels: (batch, num_boxes, num_classes + 1)
         labels_scores = tf.reduce_max(labels, axis=-1)
         labels_idx = tf.argmax(labels, axis=-1)
+        labels_scores = tf.convert_to_tensor(labels_scores)
         results = []
         batch_size, _, _ = bboxes.get_shape()
         for i in range(batch_size):
+            object_boxes_indices = tf.where(labels_idx[i, :] > 0)
+            bboxes_pos = tf.gather_nd(bboxes[i, :, :], tf.expand_dims(object_boxes_indices, axis=1))
+            bboxes_pos = tf.reshape(bboxes_pos, shape=(-1, 4))
+            labels_scores_pos = tf.gather_nd(labels_scores[i, :], object_boxes_indices)
+            labels_idx_pos = tf.gather_nd(labels_idx[i, :], object_boxes_indices)
+
             selected = tf.image.non_max_suppression(
-                bboxes[i, :, :],
-                labels_scores[i, :],
+                bboxes_pos,
+                labels_scores_pos,
                 iou_threshold=iou_threshold,
-                score_threshold=score_threshold
+                score_threshold=score_threshold,
+                max_output_size=5
             )
             results.append({
-                "bboxes": tf.gather(bboxes, selected),
-                "labels": tf.gather(labels_idx, selected)
+                "bboxes": tf.gather(bboxes_pos, selected),
+                "labels": tf.gather(labels_idx_pos, selected)
             })
         return results
