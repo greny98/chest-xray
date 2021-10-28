@@ -1,5 +1,4 @@
-from tensorflow.python.keras.applications import densenet
-
+from static_values.values import STEPS, BATCH_SIZE
 from utils import box_utils
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
@@ -39,14 +38,13 @@ class AnchorBoxes:
         return tf.stack(boxes, axis=0)
 
 
+# ======================================================================================================================
 class LabelEncoder:
-    def __init__(self, num_classes):
-        self.anchor_boxes = AnchorBoxes(steps=[56, 28, 14, 7, 3, 1])
+    def __init__(self, num_classes, steps=STEPS):
+        self.anchor_boxes = AnchorBoxes(steps)
         self.num_classes = num_classes + 1  # 0 for background
 
     def compute_offsets(self, matched_gt_boxes):
-        # sigma_center = 0.1
-        # sigma_size = 0.2
         off_cx = (matched_gt_boxes[:, 0] - self.anchor_boxes.boxes[:, 0]) / self.anchor_boxes.boxes[:, 2]
         off_cy = (matched_gt_boxes[:, 1] - self.anchor_boxes.boxes[:, 1]) / self.anchor_boxes.boxes[:, 3]
         off_w = tf.math.log(matched_gt_boxes[:, 2] / self.anchor_boxes.boxes[:, 2])
@@ -87,3 +85,39 @@ class LabelEncoder:
         # TODO: Compute offsets for anchor box from ground truth and return both classes and offsets
         offsets = self.compute_offsets(matched_gt_boxes)
         return offsets, to_categorical(anchor_boxes_classes, self.num_classes)
+
+
+# ======================================================================================================================
+class PredictionDecoder:
+    def __init__(self, anchor_boxes: AnchorBoxes):
+        self.anchor_boxes = anchor_boxes
+
+    def compute_bboxes(self, offsets, labels, score_threshold=0.6, iou_threshold=0.5):
+        # offsets (batch, num_boxes, 4)
+        anchor_boxes = tf.expand_dims(self.anchor_boxes.boxes, axis=0)
+        cx = anchor_boxes[:, :, 0] + offsets[:, :, 0] * anchor_boxes[:, :, 2]
+        cy = anchor_boxes[:, :, 1] + offsets[:, :, 1] * anchor_boxes[:, :, 3]
+        w = tf.exp(offsets[:, :, 2]) * anchor_boxes[:, :, 2]
+        h = tf.exp(offsets[:, :, 3]) * anchor_boxes[:, :, 3]
+        bboxes = tf.stack([cx, cy, w, h], axis=-1)
+        return self.get_best_bboxes(bboxes, labels, score_threshold, iou_threshold)
+
+    def get_best_bboxes(self, bboxes, labels, score_threshold, iou_threshold):
+        # bboxes: (batch, num_boxes, 4)
+        # labels: (batch, num_boxes, num_classes + 1)
+        labels_scores = tf.reduce_max(labels, axis=-1)
+        labels_idx = tf.argmax(labels, axis=-1)
+        results = []
+        batch_size, _, _ = bboxes.get_shape()
+        for i in range(batch_size):
+            selected = tf.image.non_max_suppression(
+                bboxes[i, :, :],
+                labels_scores[i, :],
+                iou_threshold=iou_threshold,
+                score_threshold=score_threshold
+            )
+            results.append({
+                "bboxes": tf.gather(bboxes, selected),
+                "labels": tf.gather(labels_idx, selected)
+            })
+        return results

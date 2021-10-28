@@ -21,7 +21,6 @@ def create_bboxes(df):
     images_dict = {key: {} for key in images}
     for image in images_dict.keys():
         image_box_df = df[df['image_idx'] == image]
-
         images_dict[image] = {
             "bboxes": image_box_df[['box_left', 'box_top',
                                     'box_width', 'box_height']].values,
@@ -39,7 +38,7 @@ def read_csv(filename: str, mode='classify'):
         return create_bboxes(df)
 
 
-def train_val_split(X_train_val, y_train_val, test_size=0.1, log=True):
+def train_val_split(X_train_val, y_train_val, test_size=0.1, log=False):
     X_train, y_train, X_val, y_val = iterative_train_test_split(X_train_val, y_train_val, test_size=test_size)
     if log:
         print("Split information:")

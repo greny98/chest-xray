@@ -4,14 +4,12 @@ from static_values.values import IMAGE_SIZE
 
 
 def get_backbone(weights=None):
-    if (weights is None) or (weights == 'imagenet'):
-        base_net = load_basenet(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3))
-    else:
-        base_net = load_basenet(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3))
+    base_net = load_basenet(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3))
+    if weights is not None:
         base_net.load_weights(weights).expect_partial()
     last_out = layers.MaxPooling2D()(base_net.output)
 
-    extract_layers = ['conv2_block3_out', 'conv3_block4_out', 'conv4_block6_out']
+    extract_layers = ['pool2_pool', 'pool3_pool', 'pool4_pool']
     feature_maps = [base_net.get_layer(name).output for name in extract_layers]
     feature_maps.append(last_out)
     return Model(inputs=[base_net.inputs], outputs=feature_maps)
@@ -28,8 +26,11 @@ def pyramid_block(l_layers):
     return out_layers
 
 
-def FeaturePyramid(backbone=None):
-    # pool_out1=(56x56) - pool_out2=(28x28) - pool_out3=(14x14) - pool_out4=(7x7)
+def FeaturePyramid(backbone: Model):
+    # freeze backbone
+    for l in backbone.layers:
+        l.trainable = False
+    # pool_out1=(40x40) - pool_out2=(20x20) - pool_out3=(10x10) - pool_out4=(5x5)
     pool_out1, pool_out2, pool_out3, pool_out4 = backbone.outputs
     # Change all to 256 units
     pyr_out1 = layers.Conv2D(256, 1, name='pyr_out1_conv1')(pool_out1)

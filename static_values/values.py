@@ -13,3 +13,5 @@ BATCH_SIZE = 20
 object_names = ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltrate', 'Mass',
                 'Nodule', 'Pneumonia', 'Pneumothorax']
 object_names2idx = {key: idx + 1 for idx, key in enumerate(object_names)}
+
+STEPS = [40, 20, 10, 5, 2, 1]

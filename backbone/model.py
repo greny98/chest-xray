@@ -24,8 +24,8 @@ def create_model(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3)):
     return Model(inputs=[base_net.inputs], outputs=outputs)
 
 
-def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=2.0e-5):
-    # @tf.function
+def create_training_step(model: Model, l_losses, l_metrics, optimizer, decay=5.0e-5):
+    @tf.function
     def training_step(X, y_true):
         with tf.GradientTape() as tape:
             y_pred = model(X, training=True)

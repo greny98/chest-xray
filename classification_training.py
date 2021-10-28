@@ -3,7 +3,7 @@ import argparse
 from tensorflow.keras import optimizers, metrics
 from backbone.losses import get_losses_weights, create_losses
 from backbone.model import create_model, create_training_step, create_validate_step, calc_loop
-from utils.data_generator import ClassificationGenerator, ClassifyGenerator
+from utils.data_generator import ClassifyGenerator
 from utils.dataframe import read_csv, train_val_split
 import time
 

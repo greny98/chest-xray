@@ -45,11 +45,10 @@ def create_focal_loss(batch_size):
 
 def create_loc_loss(batch_size):
     def loc_loss(y_true, y_pred, positive_indices):
+        # Tính loss của positive boxes và top các negative có loss cao
         l1_smooths = []
-        print("+ positive_indices", positive_indices)
         for i in range(batch_size):
             batch_indices = tf.reshape(tf.where(positive_indices[:, 0] == i), shape=(-1,))
-            print("+ batch_indices", batch_indices)
             batch_positive = tf.gather(positive_indices, batch_indices)
             y_true = tf.gather_nd(y_true, batch_positive)
             y_pred = tf.gather_nd(y_pred, batch_positive)

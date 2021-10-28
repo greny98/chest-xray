@@ -7,8 +7,8 @@ def corners_to_center(corners):
     :param corners:
     :return:
     """
-    x = (corners[:, 0] + corners[:, 2]) / 2
-    y = (corners[:, 1] + corners[:, 3]) / 2
+    x = (corners[:, 0] + corners[:, 2]) * 0.5
+    y = (corners[:, 1] + corners[:, 3]) * 0.5
     w = corners[:, 2] - corners[:, 0]
     h = corners[:, 3] - corners[:, 1]
     return tf.stack([x, y, w, h], axis=1)
@@ -42,6 +42,7 @@ def calc_IoU(boxes1, boxes2, mode='corner', reduce_mean=False):
         boxes2 = center_to_corners(boxes2)
     boxes1 = tf.cast(boxes1, tf.float32)
     boxes2 = tf.cast(boxes2, tf.float32)
+
     # Calculate Intersection
     inter_xmin, inter_ymin = tf.maximum(boxes1[:, 0], boxes2[:, 0]), tf.maximum(boxes1[:, 1], boxes2[:, 1])
     inter_xmax, inter_ymax = tf.minimum(boxes1[:, 2], boxes2[:, 2]), tf.minimum(boxes1[:, 3], boxes2[:, 3])

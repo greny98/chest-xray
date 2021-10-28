@@ -2,24 +2,21 @@ import os
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.applications import densenet
-from tensorflow.keras.utils import Sequence
 import albumentations as augment
-import cv2
-
-from detection.anchor_boxes import LabelEncoder
-from static_values.values import IMAGE_SIZE, BATCH_SIZE, l_diseases, object_names
+from static_values.values import IMAGE_SIZE, BATCH_SIZE, object_names
 
 autotune = tf.data.AUTOTUNE
 
 
-def data_augmentation(training=False):
+def classify_augmentation(training=False):
     if training:
         transform = augment.Compose([
-            augment.ImageCompression(quality_lower=80, quality_upper=100, p=0.25),
+            augment.ImageCompression(quality_lower=70, quality_upper=100, p=0.4),
             augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
-            augment.Rotate(limit=75, p=0.4),
-            augment.RandomScale(0.15),
-            augment.RandomCrop(800, 800, p=0.25),
+            augment.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=90),
+            augment.GaussNoise(p=0.4),
+            # augment.RandomRain(p=0.3),
+            augment.RandomCrop(800, 800, p=0.4),
             augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
         ])
     else:
@@ -39,7 +36,8 @@ def data_augmentation(training=False):
 
 def ClassifyGenerator(images, y, image_dir, training=False, batch_size=BATCH_SIZE):
     def process_data(image_file, label):
-        aug_img = tf.numpy_function(func=data_augmentation(training), inp=[image_file], Tout=tf.float32)
+        print(image_file, label)
+        aug_img = tf.numpy_function(func=classify_augmentation(training), inp=[image_file], Tout=tf.float32)
         return aug_img, label
 
     images_ts = tf.data.Dataset.from_tensor_slices(image_dir + images)
@@ -55,141 +53,85 @@ def ClassifyGenerator(images, y, image_dir, training=False, batch_size=BATCH_SIZ
     return ds
 
 
-class ClassificationGenerator(Sequence):
-    def __init__(self, image_files, labels, image_dir, batch_size=BATCH_SIZE, training=True):
-        """
-        Khởi tạo data generator cho bài toán phân loại
-        :param image_files: ["abc.png", "cde.png"]
-        :param labels: [ [0], [1], [0] ]
-        :param image_dir:
-        :param batch_size:
-        :param training:
-        """
-        self.image_files = [os.path.join(image_dir, filename) for filename in image_files]
-        self.labels = labels
-        self.num_samples = len(self.image_files)
-        self.steps = len(image_files) // batch_size
-        self.indices = np.arange(0, self.num_samples, dtype=np.int)
-        if len(image_files) % batch_size > 0:
-            self.steps += 1
-        self.batch_size = batch_size
-        self.training = training
-        if training:
-            self.transform = augment.Compose([
-                augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
-                augment.RandomRotate90(p=0.3),
-                augment.RandomScale(0.15),
-                augment.RandomCrop(800, 800, p=0.25),
-                augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
-            ])
-            self.on_epoch_end()
-        else:
-            self.transform = augment.Compose([augment.Resize(IMAGE_SIZE, IMAGE_SIZE)])
-
-    def __getitem__(self, item):
-        start = item * self.batch_size
-        end = (item + 1) * self.batch_size
-        selected = self.indices[start:end]
-        tensor_inp = []
-        diseases = [[] for _ in range(len(l_diseases))]
-        for i in selected:
-            processed_image = self.process_image(self.image_files[i])
-            tensor_inp.append(processed_image)
-            for i_res, res in enumerate(self.labels[i]):
-                diseases[i_res].append(res)
-        diseases = tuple([tf.convert_to_tensor(disease, dtype=tf.float32) for disease in diseases])
-        tensor_inp = tf.convert_to_tensor(tensor_inp, dtype=tf.float32)
-        tensor_inp = densenet.preprocess_input(tensor_inp)
-        return tensor_inp, diseases
-
-    def process_image(self, image_name):
-        image = cv2.imread(image_name)
-        return self.transform(image=image)['image']
-
-    def __len__(self):
-        return self.steps
-
-    def on_epoch_end(self):
-        if self.training:
-            np.random.shuffle(self.indices)
-
-
 # ======================================================================================================================
-class DetectionGenerator(Sequence):
-    def __init__(self, images_info: dict, image_dir, num_classes=len(object_names), batch_size=BATCH_SIZE,
-                 training=True):
-        """
-        Khởi tạo data generator cho bài toán phân loại
-        :param image_files: ["abc.png", "cde.png"]
-        :param labels: [ [0], [1], [0] ]
-        :param image_dir:
-        :param batch_size:
-        :param training:
-        """
-        self.image_files = [os.path.join(image_dir, filename) for filename in images_info.keys()]
-        self.label_encoder = LabelEncoder(num_classes)
-        self.bboxes = [image['bboxes'] for image in images_info.values()]
-        self.labels = [image['labels'] for image in images_info.values()]
-        self.num_samples = len(self.image_files)
-        self.steps = self.num_samples // batch_size
-        self.indices = np.arange(0, self.num_samples, dtype=np.int)
-        if self.num_samples % batch_size > 0:
-            self.steps += 1
-        self.batch_size = batch_size
-        self.training = training
-        if training:
-            self.transform = augment.Compose([
-                augment.RandomBrightnessContrast(),
-                augment.RandomRotate90(p=0.3),
-                augment.RandomScale(0.15),
-                augment.RandomCrop(800, 800, p=0.25),
-                augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
-            ], bbox_params=augment.BboxParams(format='coco'))
-        else:
-            self.transform = augment.Compose([augment.Resize(IMAGE_SIZE, IMAGE_SIZE)])
 
-    def __getitem__(self, item):
-        start = item * self.batch_size
-        end = (item + 1) * self.batch_size
-        selected = self.indices[start:end]
-        tensor_inp = []
-        labels = []
-        offsets = []
-        for i in selected:
-            processed_image, trans_bboxes = self.process_image(self.image_files[i], self.bboxes[i], self.labels[i])
-            tensor_inp.append(processed_image)
-            label = tf.convert_to_tensor(self.labels[i])
-            trans_bboxes = tf.convert_to_tensor(trans_bboxes, dtype=tf.float32)
-            offset, label_oh = self.label_encoder.matching(trans_bboxes, label)
-            offsets.append(offset)
-            labels.append(label_oh)
-        tensor_inp = tf.convert_to_tensor(tensor_inp, dtype=tf.float32)
-        offsets = tf.convert_to_tensor(offsets, dtype=tf.float32)
-        labels = tf.convert_to_tensor(labels, dtype=tf.float32)
-        print(offsets)
-        return densenet.preprocess_input(tensor_inp), (offsets, labels)
+def detect_augmentation(label_encoder, training):
+    if training:
+        transform = augment.Compose([
+            augment.ImageCompression(quality_lower=75, quality_upper=100, p=0.25),
+            augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
+            augment.Rotate(limit=60, p=0.4),
+            augment.RandomScale(0.15),
+            augment.GaussNoise(p=0.25),
+            augment.RandomCrop(800, 800, p=0.25),
+            augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
+        ], bbox_params=augment.BboxParams(format='coco'))
+    else:
+        transform = augment.Compose([augment.Resize(IMAGE_SIZE, IMAGE_SIZE)],
+                                    bbox_params=augment.BboxParams(format='coco'))
 
-    def process_image(self, image_name, bboxes, labels):
+    def preprocess_image(image_file, bboxes, labels, n_bbox):
+        image_raw = tf.io.read_file(image_file)
         trans_bboxes = []
-        for i, bbox in enumerate(bboxes):
+        bboxes = bboxes[:n_bbox]
+        labels = labels[:n_bbox]
+        for i, bbox in enumerate(bboxes[:n_bbox]):
             trans_bbox = list(bbox)
             trans_bbox.append(object_names[labels[i] - 1])
             trans_bboxes.append(trans_bbox)
-        image = cv2.imread(image_name, cv2.IMREAD_COLOR)
-        img_h, img_w, _ = image.shape
-        transformed = self.transform(image=image, bboxes=trans_bboxes)
+        decoded = tf.image.decode_jpeg(image_raw, channels=3)
+        data = {'image': decoded.numpy(), 'bboxes': trans_bboxes}
+        transformed = transform(**data)
+        # extract transformed image
+        aug_img = transformed['image']
+        aug_img = tf.cast(aug_img, tf.float32)
+        aug_img = densenet.preprocess_input(aug_img)
+        aug_img = tf.cast(aug_img, tf.float32)
+        # extract transformed bboxes
         bboxes_transformed = []
         for x, y, w, h, _ in transformed['bboxes']:
             cx = (x + w / 2) / IMAGE_SIZE
             cy = (y + h / 2) / IMAGE_SIZE
             w = w / IMAGE_SIZE
             h = h / IMAGE_SIZE
-            bboxes_transformed.append([cx, cy, w, h])
-        return transformed['image'], bboxes_transformed
+            bboxes_transformed.append(tf.convert_to_tensor([cx, cy, w, h], tf.float32))
+        offset, label_oh = label_encoder.matching(bboxes_transformed, labels)
+        return [aug_img, tf.convert_to_tensor(offset, tf.float32),
+                tf.convert_to_tensor(label_oh, tf.float32)]
 
-    def __len__(self):
-        return self.steps
+    return preprocess_image
 
-    def on_epoch_end(self):
-        if self.training:
-            np.random.shuffle(self.indices)
+
+def DetectionGenerator(images_info: dict, image_dir, label_encoder, training=False,
+                       batch_size=BATCH_SIZE):
+    # Extract infomation from images_info
+    image_files = [os.path.join(image_dir, filename) for filename in images_info.keys()]
+    bboxes = [list(image['bboxes']) for image in images_info.values()]
+    labels = [list(image['labels']) for image in images_info.values()]
+    # padding boxes
+    pad_bbox = np.zeros(4, dtype=np.float32)
+    pad_label = -1
+    num_bboxes = [len(label) for label in labels]
+    max_padding = max(num_bboxes)
+    for i in range(len(bboxes)):
+        for _ in range(num_bboxes[i], max_padding):
+            bboxes[i].append(pad_bbox)
+            labels[i].append(pad_label)
+    # Create tensor slices
+    image_files_slices = tf.data.Dataset.from_tensor_slices(image_files)
+    bboxes_slices = tf.data.Dataset.from_tensor_slices(bboxes)
+    labels_slices = tf.data.Dataset.from_tensor_slices(labels)
+    num_bboxes_slices = tf.data.Dataset.from_tensor_slices(num_bboxes)
+    y_slices = tf.data.Dataset.zip((bboxes_slices, labels_slices, num_bboxes_slices))
+
+    # Create dataset with process
+    def process_data(image_file, y):
+        aug_image, offsets, labels_oh = tf.numpy_function(func=detect_augmentation(label_encoder, training),
+                                                          inp=[image_file, y[0], y[1], y[2]],
+                                                          Tout=[tf.float32, tf.float32, tf.float32])
+        return aug_image, offsets, labels_oh
+
+    ds = tf.data.Dataset.zip((image_files_slices, y_slices))
+    ds = ds.shuffle(16 * batch_size, reshuffle_each_iteration=training)
+    ds = ds.map(lambda x, y: process_data(x, y), num_parallel_calls=autotune).batch(batch_size).prefetch(-1)
+    return ds
