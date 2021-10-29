@@ -26,22 +26,22 @@ label_encoder = LabelEncoder()
 ds = DetectionGenerator(image_infos_test, 'data/images', label_encoder, training=True, batch_size=1)
 img_test = None
 bboxes_test = None
-for b_img_test, bboxes in ds:
-    img_test = b_img_test
-    bboxes_test = bboxes
+for ba in ds:
+    # img_test = b_img_test
+    # bboxes_test = bboxes
     break
 
-x, y, w, h = tf.reshape(bboxes_test, shape=(-1,)).numpy()
-x = int(x * IMAGE_SIZE)
-y = int(y * IMAGE_SIZE)
-w = int(w * IMAGE_SIZE)
-h = int(h * IMAGE_SIZE)
+# x, y, w, h = tf.reshape(bboxes_test, shape=(-1,)).numpy()
+# x = int(x * IMAGE_SIZE)
+# y = int(y * IMAGE_SIZE)
+# w = int(w * IMAGE_SIZE)
+# h = int(h * IMAGE_SIZE)
+#
+# img_test = tf.cast(img_test, tf.uint8)
+# img_test = img_test.numpy()[0, :, :, :]
+# cv2.rectangle(img_test, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-img_test = tf.cast(img_test, tf.uint8)
-img_test = img_test.numpy()[0, :, :, :]
-cv2.rectangle(img_test, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-cv2.imshow("img", img)
-cv2.imshow("img_test", img_test)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# cv2.imshow("img", img)
+# cv2.imshow("img_test", img_test)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()

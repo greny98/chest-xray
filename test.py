@@ -7,7 +7,7 @@ from cv2 import cv2
 from tensorflow.keras.applications import densenet
 
 image_infos = read_csv('data/train_bbox.csv', mode='detect')
-image_file = list(image_infos.keys())[0]
+image_file = list(image_infos.keys())[200]
 
 img = cv2.imread(f'data/images/{image_file}')
 img_h, img_w, _ = img.shape

@@ -34,7 +34,6 @@ def classify_augmentation(training=False):
 
 def ClassifyGenerator(images, y, image_dir, training=False, batch_size=BATCH_SIZE):
     def process_data(image_file, label):
-        print(image_file, label)
         aug_img = tf.numpy_function(func=classify_augmentation(training), inp=[image_file], Tout=tf.float32)
         return aug_img, label
 
@@ -82,8 +81,8 @@ def detect_augmentation(label_encoder, training):
         aug_img = transformed['image']
         aug_img = tf.cast(aug_img, tf.float32)
 
-        # aug_img = densenet.preprocess_input(aug_img)
-        # aug_img = tf.cast(aug_img, tf.float32)
+        aug_img = densenet.preprocess_input(aug_img)
+        aug_img = tf.cast(aug_img, tf.float32)
 
         # extract transformed bboxes
         bboxes_transformed = []
@@ -94,9 +93,8 @@ def detect_augmentation(label_encoder, training):
             h = h / IMAGE_SIZE
             bboxes_transformed.append(tf.convert_to_tensor([cx, cy, w, h], tf.float32))
         offset, label_oh = label_encoder.matching(bboxes_transformed, labels)
-        # return [aug_img, tf.convert_to_tensor(offset, tf.float32),
-        #         tf.convert_to_tensor(label_oh, tf.float32)]
-        return aug_img, bboxes_transformed
+        return [aug_img, tf.convert_to_tensor(offset, tf.float32),
+                tf.convert_to_tensor(label_oh, tf.float32)]
 
     return preprocess_image
 
@@ -125,13 +123,10 @@ def DetectionGenerator(images_info: dict, image_dir, label_encoder, training=Fal
 
     # Create dataset with process
     def process_data(image_file, y):
-        # aug_image, offsets, labels_oh = tf.numpy_function(func=detect_augmentation(label_encoder, training),
-        #                                                   inp=[image_file, y[0], y[1], y[2]],
-        #                                                   Tout=[tf.float32, tf.float32, tf.float32])
-        aug_image, bboxes_transformed = tf.numpy_function(func=detect_augmentation(label_encoder, training),
+        aug_image, offsets, labels_oh = tf.numpy_function(func=detect_augmentation(label_encoder, training),
                                                           inp=[image_file, y[0], y[1], y[2]],
-                                                          Tout=[tf.float32, tf.float32])
-        return aug_image, bboxes_transformed
+                                                          Tout=[tf.float32, tf.float32, tf.float32])
+        return aug_image, offsets, labels_oh
 
     ds = tf.data.Dataset.zip((image_files_slices, y_slices))
     ds = ds.shuffle(16 * batch_size, reshuffle_each_iteration=training)

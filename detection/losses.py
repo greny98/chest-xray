@@ -20,8 +20,12 @@ def create_focal_loss(batch_size=BATCH_SIZE):
         # batch, num_boxes, num_classes
         gamma = 2.
         alpha = 0.25
-        epsilon = 1e-7
-        loss = -alpha * y_true * tf.pow(1 - y_pred, gamma) * tf.math.log(y_pred + epsilon)
+        epsilon = 1e-8
+        # Calculate
+        y_pred = tf.clip_by_value(y_pred, epsilon, 1 - epsilon)
+        ce = -y_true * tf.math.log(y_pred)
+        weight = tf.pow(1 - y_pred, gamma) * y_true
+        loss = alpha * weight * ce
         loss = tf.reduce_sum(loss, axis=-1)
         # Tính loss positive và negative
         positive_indices = tf.where(y_true[:, :, 0] == 0)
@@ -36,10 +40,10 @@ def create_focal_loss(batch_size=BATCH_SIZE):
             batch_indices = tf.reshape(tf.where(negative_indices[:, 0] == i), shape=(-1,))
             batch_negative = tf.gather(negative_indices, batch_indices)
             loss_negative = tf.gather_nd(loss, batch_negative)
-            loss_negative = tf.sort(loss_negative, direction='DESCENDING')
+            # loss_negative = tf.sort(loss_negative, direction='DESCENDING')
             # lấy số mẫu negative gấp 3 lần positive
-            n_neg = 3 * loss_positive.get_shape()[0]
-            sample_loss = tf.reduce_sum(loss_positive) + tf.reduce_sum(loss_negative[:n_neg])
+            # n_neg = 3 * loss_positive.get_shape()[0]
+            sample_loss = tf.reduce_sum(loss_positive) + tf.reduce_sum(loss_negative)
             batch_losses.append(sample_loss)
         return tf.reduce_mean(batch_losses), positive_indices
 

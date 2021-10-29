@@ -51,7 +51,7 @@ class LabelEncoder:
         off_h = tf.math.log(matched_gt_boxes[:, 3] / self.anchor_boxes.boxes[:, 3])
         return tf.stack([off_cx, off_cy, off_w, off_h], axis=1)
 
-    def matching(self, gt_boxes, gt_classes, iou_threshold=0.5):
+    def matching(self, gt_boxes, gt_classes, iou_threshold=0.3):
         """
         Matching ground truth boxes and anchor boxes
         :param gt_boxes:
@@ -73,9 +73,11 @@ class LabelEncoder:
         best_iou = tf.gather_nd(
             iou_anchor2gt,
             tf.stack([rows, arg_max_iou], axis=1))
+
         # Labeled for anchor boxes
         # Find anchor boxes that has iou >= iou_threshold
         negative_indices = tf.cast(tf.where(best_iou < iou_threshold), tf.int32)
+
         anchor_boxes_classes = tf.tensor_scatter_nd_update(
             tf.expand_dims(tf.gather(gt_classes, arg_max_iou), axis=1),
             negative_indices,
