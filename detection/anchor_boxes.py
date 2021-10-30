@@ -83,17 +83,18 @@ class LabelEncoder:
             best_anchor_classes)
         # Edit best iou box
         best_arg = tf.cast(tf.argmax(best_iou), tf.int32)
-        # print("best_iou", best_iou)
-        # print('best', best_arg, tf.reduce_max(best_iou))
         anchor_boxes_classes = tf.where(
             rows == best_arg,
-            best_anchor_classes[best_arg]*tf.ones_like(anchor_boxes_classes),
+            best_anchor_classes[best_arg],
             anchor_boxes_classes)
 
         # anchor_boxes_classes = tf.reshape(anchor_boxes_classes, shape=(-1,))
         matched_gt_boxes = tf.gather_nd(gt_boxes, tf.expand_dims(arg_max_iou, axis=-1))
         # TODO: Compute offsets for anchor box from ground truth and return both classes and offsets
         offsets = self.compute_offsets(matched_gt_boxes)
+        test = to_categorical(anchor_boxes_classes, self.num_classes)
+        if tf.reduce_sum(test[:, 0]) == test.shape[0]:
+            print("====to_categorical")
         return offsets, to_categorical(anchor_boxes_classes, self.num_classes)
 
 
@@ -135,13 +136,13 @@ class PredictionDecoder:
                 max_output_size=20
             )
 
-            results.append({
-                "bboxes": tf.gather(bboxes_pos, selected),
-                "labels": tf.gather(labels_idx_pos, selected)
-            })
-
             # results.append({
-            #     "bboxes": bboxes[i, :, :],
-            #     "labels": labels_idx[i, :]
+            #     "bboxes": tf.gather(bboxes_pos, selected),
+            #     "labels": tf.gather(labels_idx_pos, selected)
             # })
+
+            results.append({
+                "bboxes": bboxes[i, :, :],
+                "labels": labels_idx[i, :]
+            })
         return results

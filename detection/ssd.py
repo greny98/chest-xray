@@ -5,27 +5,26 @@ from detection.losses import create_focal_loss, create_l1_smooth_loss
 from static_values.values import object_names
 
 
-def build_head(num_filters):
-    head = Sequential([Input(shape=[None, None, 256])])
-    for _ in range(3):
-        head.add(layers.Conv2D(256, 3, padding="same"))
-        head.add(layers.BatchNormalization(epsilon=1.001e-5))
-        head.add(layers.ReLU())
-    head.add(layers.Conv2D(num_filters, 3, padding="same"))
-    return head
+def build_head(feature, num_filters, name):
+    for i in range(3):
+        feature = layers.Conv2D(256, 3, padding="same", name=name + '_conv' + str(i))(feature)
+        feature = layers.BatchNormalization(epsilon=1.001e-5)(feature)
+        feature = layers.ReLU()(feature)
+    feature = layers.Conv2D(num_filters, 3, padding="same", name=name + '_conv_out')(feature)
+    return feature
 
 
 def ssd_head(features):
     num_classes = len(object_names) + 1
     num_anchor_boxes = 9
-    classify_head = build_head(num_anchor_boxes * num_classes)
-    detect_head = build_head(num_anchor_boxes * 4)
     classes_outs = []
     box_outputs = []
-    for feature in features:
-        box_outputs.append(layers.Reshape([-1, 4])(detect_head(feature)))
-        classes_out = layers.Reshape([-1, num_classes])(classify_head(feature))
-        classes_outs.append(layers.Softmax(axis=-1)(classes_out))
+    for idx, feature in enumerate(features):
+        classify_head = build_head(feature, num_anchor_boxes * num_classes, 'classify_head' + str(idx))
+        detect_head = build_head(feature, num_anchor_boxes * 4, 'detect_head' + str(idx))
+        box_outputs.append(layers.Reshape([-1, 4])(detect_head))
+        classes_out = layers.Reshape([-1, num_classes])(classify_head)
+        classes_outs.append(layers.Softmax(axis=-1, name='classify_out' + str(idx))(classes_out))
     classes_outs = layers.Concatenate(axis=1)(classes_outs)
     box_outputs = layers.Concatenate(axis=1)(box_outputs)
     return [classes_outs, box_outputs]
@@ -38,16 +37,24 @@ def create_ssd_model(backbone_weights=None):
     return Model(inputs=[pyramid.input], outputs=outputs)
 
 
-def create_training_fn(model: Model, optimizer: Opt.Adam, batch_size):
+def create_training_fn(model: Model, optimizer: Opt.Adam, batch_size, decay=2.5e-5):
     focal_loss = create_focal_loss(batch_size)
     l1_smooth_loss = create_l1_smooth_loss(batch_size)
+    decay_layers = []
+    for l in model.layers:
+        if '_head' in l.name:
+            decay_layers.append(l.name)
 
     def training_step(images, offsets, labels_oh):
         with tf.GradientTape() as tape:
             pred_labels, pred_offsets = model(images, training=True)
             classify_losses, pos_indices = focal_loss(labels_oh, pred_labels)
             localize_losses = l1_smooth_loss(offsets, pred_offsets, pos_indices)
-            total_losses = classify_losses + localize_losses
+
+            kernel_variables = [model.get_layer(name).weights[0] for name in decay_layers]
+            wd_penalty = decay * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
+            # wd_penalty = tf.cast(wd_penalty, tf.float64)
+            total_losses = classify_losses + localize_losses + wd_penalty
         grads = tape.gradient(total_losses, model.trainable_weights)
         optimizer.apply_gradients(zip(grads, model.trainable_weights))
         return {"total_losses": total_losses,

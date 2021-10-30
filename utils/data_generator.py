@@ -100,7 +100,7 @@ def detect_augmentation(label_encoder, training):
 
 
 def DetectionGenerator(images_info: dict, image_dir, label_encoder, training=False,
-                       batch_size=BATCH_SIZE):
+                       batch_size=10):
     # Extract infomation from images_info
     image_files = [os.path.join(image_dir, filename) for filename in images_info.keys()]
     bboxes = [list(image['bboxes']) for image in images_info.values()]

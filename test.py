@@ -36,7 +36,7 @@ img_tensor = tf.expand_dims(img_tensor, axis=0)
 img_tensor = densenet.preprocess_input(img_tensor)
 
 ssd_model = create_ssd_model()
-# ssd_model.load_weights('ckpt/detect/checkpoint')
+ssd_model.load_weights('ckpt/detect_densenet169_v1/checkpoint')
 pred_labels, pred_offsets = ssd_model(img_tensor, training=False)
 
 results = decoder.compute_bboxes(pred_offsets, pred_labels)

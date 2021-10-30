@@ -34,11 +34,7 @@ def down_sampling(pyr_out, name):
     return pyr_out
 
 
-def FeaturePyramid(backbone: Model, freeze_backbone=False):
-    # freeze backbone
-    if freeze_backbone:
-        for l in backbone.layers:
-            l.trainable = False
+def FeaturePyramid(backbone: Model):
     # (64x64) => (32x32) => (16x16) => (8x8) => (4x4)  => (2x2)
     pool_out1, pool_out2, pool_out3, pool_out4 = backbone.outputs
     # Change all to 256 units

@@ -18,6 +18,7 @@ def create_focal_loss(batch_size=BATCH_SIZE):
     def focal_loss(y_true, y_pred):
         # print(y_true, y_pred)
         # batch, num_boxes, num_classes
+        tf.debugging.check_numerics(y_pred, message="INF")
         gamma = 2.
         alpha = 0.25
         epsilon = 1e-8
@@ -27,27 +28,10 @@ def create_focal_loss(batch_size=BATCH_SIZE):
         weight = tf.pow(1 - y_pred, gamma) * y_true
         loss = alpha * weight * ce
         loss = tf.reduce_sum(loss, axis=-1)
-        # loss = losses.CategoricalCrossentropy(reduction=losses.Reduction.NONE)(y_true, y_pred)
-
+        loss = tf.reduce_sum(loss, axis=-1)
         # Tính loss positive và negative
         positive_indices = tf.where(y_true[:, :, 0] == 0)
-        negative_indices = tf.where(y_true[:, :, 0] == 1)
-        batch_losses = []
-        for i in range(batch_size):
-            # positive loss
-            batch_indices = tf.reshape(tf.where(positive_indices[:, 0] == i), shape=(-1,))
-            batch_positive = tf.gather(positive_indices, batch_indices)
-            loss_positive = tf.gather_nd(loss, batch_positive.numpy())
-            # negative loss
-            batch_indices = tf.reshape(tf.where(negative_indices[:, 0] == i), shape=(-1,))
-            batch_negative = tf.gather(negative_indices, batch_indices)
-            loss_negative = tf.gather_nd(loss, batch_negative)
-            loss_negative = tf.sort(loss_negative, direction='DESCENDING')
-            # lấy số mẫu negative gấp 3 lần positive
-            n_neg = 3 * loss_positive.get_shape()[0]
-            sample_loss = tf.reduce_sum(loss_positive) + tf.reduce_sum(loss_negative[:n_neg])
-            batch_losses.append(sample_loss)
-        return tf.reduce_mean(batch_losses), positive_indices
+        return tf.reduce_mean(loss), positive_indices
 
     return focal_loss
 
