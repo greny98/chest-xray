@@ -26,34 +26,40 @@ def pyramid_block(l_layers):
     return out_layers
 
 
-def FeaturePyramid(backbone: Model):
-    backbone.load_weights('ckpt/checkpoint').expect_partial()
+def down_sampling(pyr_out, name):
+    pyr_out = layers.Conv2D(256, 3, 1, padding='same', name=name + '_conv')(pyr_out)
+    pyr_out = layers.BatchNormalization(epsilon=1.001e-5, name=name + '_bn')(pyr_out)
+    pyr_out = layers.Activation('relu', name=name + '_relu')(pyr_out)
+    pyr_out = layers.AveragePooling2D(name=name + '_pool')(pyr_out)
+    return pyr_out
+
+
+def FeaturePyramid(backbone: Model, freeze_backbone=False):
     # freeze backbone
-    for l in backbone.layers:
-        l.trainable = False
-    # pool_out1=(40x40) - pool_out2=(20x20) - pool_out3=(10x10) - pool_out4=(5x5)
+    if freeze_backbone:
+        for l in backbone.layers:
+            l.trainable = False
+    # (64x64) => (32x32) => (16x16) => (8x8) => (4x4)  => (2x2)
     pool_out1, pool_out2, pool_out3, pool_out4 = backbone.outputs
     # Change all to 256 units
     pyr_out1 = layers.Conv2D(256, 1, name='pyr_out1_conv1')(pool_out1)
     pyr_out2 = layers.Conv2D(256, 1, name='pyr_out2_conv1')(pool_out2)
     pyr_out3 = layers.Conv2D(256, 1, name='pyr_out3_conv1')(pool_out3)
     pyr_out4 = layers.Conv2D(256, 1, name='pyr_out4_conv1')(pool_out4)
+    pyr_out5 = down_sampling(pyr_out4, name='pyr_out5')
+    pyr_out6 = down_sampling(pyr_out5, name='pyr_out6')
+
     # pyramid handle
-    pyr_out1, pyr_out2, pyr_out3, pyr_out4 = pyramid_block([pyr_out1, pyr_out2, pyr_out3, pyr_out4])
+    pyr_out1, pyr_out2, pyr_out3, pyr_out4, pyr_out5, pyr_out6 = pyramid_block(
+        [pyr_out1, pyr_out2, pyr_out3, pyr_out4, pyr_out5, pyr_out6])
+
     # after pyramid
     pyr_out1 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out1_conv2')(pyr_out1)
     pyr_out2 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out2_conv2')(pyr_out2)
     pyr_out3 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out3_conv2')(pyr_out3)
     pyr_out4 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out4_conv2')(pyr_out4)
-    # addition down sampling out5
-    pyr_out5 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out5_conv')(pyr_out4)
-    pyr_out5 = layers.BatchNormalization(epsilon=1.001e-5, name='pyr_out5_bn')(pyr_out5)
-    pyr_out5 = layers.Activation('relu', name='pyr_out5_relu')(pyr_out5)
-    pyr_out5 = layers.AveragePooling2D(name='pyr_out5_pool')(pyr_out5)
-    # addition down sampling out6
-    pyr_out6 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out6_conv')(pyr_out5)
-    pyr_out6 = layers.BatchNormalization(epsilon=1.001e-5, name='pyr_out6_bn')(pyr_out6)
-    pyr_out6 = layers.Activation('relu', name='pyr_out6_relu')(pyr_out6)
-    pyr_out6 = layers.AveragePooling2D(name='pyr_out6_pool')(pyr_out6)
+    pyr_out5 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out5_conv2')(pyr_out5)
+    pyr_out6 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out6_conv2')(pyr_out6)
+
     return Model(inputs=[backbone.inputs],
                  outputs=[pyr_out1, pyr_out2, pyr_out3, pyr_out4, pyr_out5, pyr_out6])

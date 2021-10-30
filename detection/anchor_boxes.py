@@ -9,7 +9,7 @@ class AnchorBoxes:
         self.steps = steps
         self.feature_widths = [1. / step for step in self.steps]
         self.aspect_ratios = [0.5, 1., 2.]
-        self.scales = [2 ** x for x in [0, 1 / 4, 2 / 4, 3 / 4]]
+        self.scales = [2 ** x for x in [0, 1 / 3, 2 / 3]]
         self.boxes = self.gen_anchor_boxes()
         self.total_dims = self.get_total_dims()
 
@@ -94,7 +94,7 @@ class PredictionDecoder:
     def __init__(self, anchor_boxes: AnchorBoxes):
         self.anchor_boxes = anchor_boxes
 
-    def compute_bboxes(self, offsets, labels, score_threshold=0.6, iou_threshold=0.5):
+    def compute_bboxes(self, offsets, labels, score_threshold=0.5, iou_threshold=0.5):
         # offsets (batch, num_boxes, 4)
         anchor_boxes = tf.expand_dims(self.anchor_boxes.boxes, axis=0)
         cx = anchor_boxes[:, :, 0] + offsets[:, :, 0] * anchor_boxes[:, :, 2]
@@ -113,21 +113,27 @@ class PredictionDecoder:
         results = []
         batch_size, _, _ = bboxes.get_shape()
         for i in range(batch_size):
-            object_boxes_indices = tf.where(labels_idx[i, :] > 0)
-            bboxes_pos = tf.gather_nd(bboxes[i, :, :], tf.expand_dims(object_boxes_indices, axis=1))
-            bboxes_pos = tf.reshape(bboxes_pos, shape=(-1, 4))
-            labels_scores_pos = tf.gather_nd(labels_scores[i, :], object_boxes_indices)
-            labels_idx_pos = tf.gather_nd(labels_idx[i, :], object_boxes_indices)
+            # object_boxes_indices = tf.where(labels_idx[i, :] > 0)
+            # bboxes_pos = tf.gather_nd(bboxes[i, :, :], tf.expand_dims(object_boxes_indices, axis=1))
+            # bboxes_pos = tf.reshape(bboxes_pos, shape=(-1, 4))
+            # labels_scores_pos = tf.gather_nd(labels_scores[i, :], object_boxes_indices)
+            # labels_idx_pos = tf.gather_nd(labels_idx[i, :], object_boxes_indices)
+            # bboxes_corners = box_utils.center_to_corners(bboxes_pos)
+            # selected = tf.image.non_max_suppression(
+            #     bboxes_corners,
+            #     labels_scores_pos,
+            #     iou_threshold=iou_threshold,
+            #     score_threshold=score_threshold,
+            #     max_output_size=20
+            # )
+            #
+            # results.append({
+            #     "bboxes": tf.gather(bboxes_pos, selected),
+            #     "labels": tf.gather(labels_idx_pos, selected)
+            # })
 
-            selected = tf.image.non_max_suppression(
-                bboxes_pos,
-                labels_scores_pos,
-                iou_threshold=iou_threshold,
-                score_threshold=score_threshold,
-                max_output_size=5
-            )
             results.append({
-                "bboxes": tf.gather(bboxes_pos, selected),
-                "labels": tf.gather(labels_idx_pos, selected)
+                "bboxes": bboxes[i, :, :],
+                "labels": labels_idx[i, :]
             })
         return results

@@ -40,6 +40,7 @@ def calc_IoU(boxes1, boxes2, mode='corner', reduce_mean=False):
     if mode == 'center':
         boxes1 = center_to_corners(boxes1)
         boxes2 = center_to_corners(boxes2)
+
     boxes1 = tf.cast(boxes1, tf.float32)
     boxes2 = tf.cast(boxes2, tf.float32)
 

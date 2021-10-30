@@ -6,7 +6,7 @@ from static_values.values import IMAGE_SIZE, l_diseases
 
 
 def load_basenet(input_shape):
-    return densenet.DenseNet169(input_shape=input_shape, include_top=False, weights='imagenet')
+    return densenet.DenseNet201(input_shape=input_shape, include_top=False, weights='imagenet')
 
 
 def build_top(base_net: Model):

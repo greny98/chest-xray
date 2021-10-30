@@ -5,8 +5,8 @@ l_diseases = ['Cardiomegaly', 'Emphysema', 'Effusion', 'Hernia', 'Infiltration',
               'Consolidation']
 
 # Image size default
-IMAGE_SIZE = 320
-# IMAGE_SIZE = 512
+# IMAGE_SIZE = 320
+IMAGE_SIZE = 512
 
 # Batch size
 BATCH_SIZE = 3
@@ -15,4 +15,5 @@ object_names = ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltrate', 'Mass',
                 'Nodule', 'Pneumonia', 'Pneumothorax']
 object_names2idx = {key: idx + 1 for idx, key in enumerate(object_names)}
 
-STEPS = [40, 20, 10, 5, 2, 1]
+# STEPS = [40, 20, 10, 5, 2, 1]
+STEPS = [64, 32, 16, 8, 4, 2]

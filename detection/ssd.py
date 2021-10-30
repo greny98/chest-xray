@@ -7,7 +7,7 @@ from static_values.values import object_names
 
 def build_head(num_filters):
     head = Sequential([Input(shape=[None, None, 256])])
-    for _ in range(4):
+    for _ in range(2):
         head.add(layers.Conv2D(256, 3, padding="same"))
         head.add(layers.BatchNormalization(epsilon=1.001e-5))
         head.add(layers.ReLU())
@@ -17,7 +17,7 @@ def build_head(num_filters):
 
 def ssd_head(features):
     num_classes = len(object_names) + 1
-    num_anchor_boxes = 12
+    num_anchor_boxes = 9
     classify_head = build_head(num_anchor_boxes * num_classes)
     detect_head = build_head(num_anchor_boxes * 4)
     classes_outs = []
