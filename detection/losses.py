@@ -44,7 +44,7 @@ def create_focal_loss(batch_size=BATCH_SIZE):
             loss_negative = tf.gather_nd(loss, batch_negative)
             loss_negative = tf.sort(loss_negative, direction='DESCENDING')
             # lấy số mẫu negative gấp 3 lần positive
-            # n_neg = 3 * loss_positive.get_shape()[0]
+            n_neg = 3 * loss_positive.get_shape()[0]
             sample_loss = tf.reduce_sum(loss_positive) + tf.reduce_sum(loss_negative[:n_neg])
             batch_losses.append(sample_loss)
         return tf.reduce_mean(batch_losses), positive_indices

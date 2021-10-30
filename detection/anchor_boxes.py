@@ -51,7 +51,7 @@ class LabelEncoder:
         off_h = tf.math.log(matched_gt_boxes[:, 3] / self.anchor_boxes.boxes[:, 3])
         return tf.stack([off_cx, off_cy, off_w, off_h], axis=1)
 
-    def matching(self, gt_boxes, gt_classes, iou_threshold=0.3):
+    def matching(self, gt_boxes, gt_classes, iou_threshold=0.5):
         """
         Matching ground truth boxes and anchor boxes
         :param gt_boxes:
@@ -60,7 +60,7 @@ class LabelEncoder:
         :return:
         """
         iou_anchor2gt = []
-        for idx, gt_box in enumerate(gt_boxes):
+        for gt_box in gt_boxes:
             # Tính IoU của anchor_boxes với tất cả gt_boxes
             iou = box_utils.calc_IoU(tf.expand_dims(gt_box, axis=0),
                                      self.anchor_boxes.boxes, mode='center')
@@ -76,13 +76,21 @@ class LabelEncoder:
 
         # Labeled for anchor boxes
         # Find anchor boxes that has iou >= iou_threshold
-        negative_indices = tf.cast(tf.where(best_iou < iou_threshold), tf.int32)
+        best_anchor_classes = tf.gather(gt_classes, arg_max_iou)
+        anchor_boxes_classes = tf.where(
+            best_iou < iou_threshold,
+            tf.zeros_like(best_anchor_classes),
+            best_anchor_classes)
+        # Edit best iou box
+        best_arg = tf.cast(tf.argmax(best_iou), tf.int32)
+        # print("best_iou", best_iou)
+        # print('best', best_arg, tf.reduce_max(best_iou))
+        anchor_boxes_classes = tf.where(
+            rows == best_arg,
+            best_anchor_classes[best_arg]*tf.ones_like(anchor_boxes_classes),
+            anchor_boxes_classes)
 
-        anchor_boxes_classes = tf.tensor_scatter_nd_update(
-            tf.expand_dims(tf.gather(gt_classes, arg_max_iou), axis=1),
-            negative_indices,
-            tf.zeros_like(negative_indices))
-        anchor_boxes_classes = tf.reshape(anchor_boxes_classes, shape=(-1,))
+        # anchor_boxes_classes = tf.reshape(anchor_boxes_classes, shape=(-1,))
         matched_gt_boxes = tf.gather_nd(gt_boxes, tf.expand_dims(arg_max_iou, axis=-1))
         # TODO: Compute offsets for anchor box from ground truth and return both classes and offsets
         offsets = self.compute_offsets(matched_gt_boxes)
