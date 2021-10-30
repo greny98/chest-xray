@@ -76,11 +76,11 @@ if __name__ == '__main__':
         print("\n===============================================================")
         print(f"Epoch: {epoch + 1}")
         start_time = time.time()
-        training_fn = create_training_fn(ssd_model, optimizer)
+        training_fn = create_training_fn(ssd_model, optimizer, batch_size=args["batch_size"])
         calc_loop(train_ds, training_fn, train_total_losses,
                   train_classify_losses, train_loc_losses)
         # Validation
-        validate_fn = create_val_fn(ssd_model)
+        validate_fn = create_val_fn(ssd_model, batch_size=args["batch_size"])
         val_loss = calc_loop(val_ds, validate_fn, val_total_losses,
                              val_classify_losses, val_loc_losses, mode='val')
         # Update weight

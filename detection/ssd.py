@@ -7,7 +7,7 @@ from static_values.values import object_names
 
 def build_head(num_filters):
     head = Sequential([Input(shape=[None, None, 256])])
-    for _ in range(2):
+    for _ in range(3):
         head.add(layers.Conv2D(256, 3, padding="same"))
         head.add(layers.BatchNormalization(epsilon=1.001e-5))
         head.add(layers.ReLU())
@@ -38,9 +38,9 @@ def create_ssd_model(backbone_weights=None):
     return Model(inputs=[pyramid.input], outputs=outputs)
 
 
-def create_training_fn(model: Model, optimizer: Opt.Adam):
-    focal_loss = create_focal_loss()
-    l1_smooth_loss = create_l1_smooth_loss()
+def create_training_fn(model: Model, optimizer: Opt.Adam, batch_size):
+    focal_loss = create_focal_loss(batch_size)
+    l1_smooth_loss = create_l1_smooth_loss(batch_size)
 
     def training_step(images, offsets, labels_oh):
         with tf.GradientTape() as tape:
@@ -57,9 +57,9 @@ def create_training_fn(model: Model, optimizer: Opt.Adam):
     return training_step
 
 
-def create_val_fn(model: Model):
-    focal_loss = create_focal_loss()
-    l1_smooth_loss = create_l1_smooth_loss()
+def create_val_fn(model: Model, batch_size):
+    focal_loss = create_focal_loss(batch_size)
+    l1_smooth_loss = create_l1_smooth_loss(batch_size)
 
     def val_step(images, offsets, labels_oh):
         pred_labels, pred_offsets = model(images, training=False)

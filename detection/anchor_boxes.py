@@ -1,4 +1,4 @@
-from static_values.values import STEPS, BATCH_SIZE, object_names
+from static_values.values import STEPS, object_names
 from utils import box_utils
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
@@ -113,27 +113,27 @@ class PredictionDecoder:
         results = []
         batch_size, _, _ = bboxes.get_shape()
         for i in range(batch_size):
-            # object_boxes_indices = tf.where(labels_idx[i, :] > 0)
-            # bboxes_pos = tf.gather_nd(bboxes[i, :, :], tf.expand_dims(object_boxes_indices, axis=1))
-            # bboxes_pos = tf.reshape(bboxes_pos, shape=(-1, 4))
-            # labels_scores_pos = tf.gather_nd(labels_scores[i, :], object_boxes_indices)
-            # labels_idx_pos = tf.gather_nd(labels_idx[i, :], object_boxes_indices)
-            # bboxes_corners = box_utils.center_to_corners(bboxes_pos)
-            # selected = tf.image.non_max_suppression(
-            #     bboxes_corners,
-            #     labels_scores_pos,
-            #     iou_threshold=iou_threshold,
-            #     score_threshold=score_threshold,
-            #     max_output_size=20
-            # )
-            #
-            # results.append({
-            #     "bboxes": tf.gather(bboxes_pos, selected),
-            #     "labels": tf.gather(labels_idx_pos, selected)
-            # })
+            object_boxes_indices = tf.where(labels_idx[i, :] > 0)
+            bboxes_pos = tf.gather_nd(bboxes[i, :, :], tf.expand_dims(object_boxes_indices, axis=1))
+            bboxes_pos = tf.reshape(bboxes_pos, shape=(-1, 4))
+            labels_scores_pos = tf.gather_nd(labels_scores[i, :], object_boxes_indices)
+            labels_idx_pos = tf.gather_nd(labels_idx[i, :], object_boxes_indices)
+            bboxes_corners = box_utils.center_to_corners(bboxes_pos)
+            selected = tf.image.non_max_suppression(
+                bboxes_corners,
+                labels_scores_pos,
+                iou_threshold=iou_threshold,
+                score_threshold=score_threshold,
+                max_output_size=20
+            )
 
             results.append({
-                "bboxes": bboxes[i, :, :],
-                "labels": labels_idx[i, :]
+                "bboxes": tf.gather(bboxes_pos, selected),
+                "labels": tf.gather(labels_idx_pos, selected)
             })
+
+            # results.append({
+            #     "bboxes": bboxes[i, :, :],
+            #     "labels": labels_idx[i, :]
+            # })
         return results
