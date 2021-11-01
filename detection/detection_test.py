@@ -36,16 +36,16 @@ def test_center_to_corner():
 
 
 def test_calc_IoU():
-    boxes1_corners = tf.convert_to_tensor([
+    anchors = tf.convert_to_tensor([
         [0.3, 0.2, 0.8, 0.6],
         [0.1, 0.4, 0.8, 0.7]
     ])
-    boxes2_corners = tf.convert_to_tensor([
+    gt_boxes = tf.convert_to_tensor([
         [0.1, 0.3, 0.4, 0.5],
         [0.2, 0.3, 0.5, 0.9]
     ])
     expected = tf.convert_to_tensor([0.02 / 0.24, 0.09 / 0.3])
-    iou = calc_IoU(boxes1_corners, boxes2_corners, mode='corner')
+    iou = calc_IoU(anchors, gt_boxes, mode='corner')
     print("=== corners:\n", iou)
     print("=== expected:\n", expected)
 

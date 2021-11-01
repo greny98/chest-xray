@@ -1,7 +1,7 @@
 import tensorflow as tf
-from tensorflow.keras import layers, Sequential, Input, Model, optimizers as Opt
+from tensorflow.keras import layers, Model, optimizers as Opt
 from detection.feature_pyramid import FeaturePyramid, get_backbone
-from detection.losses import create_focal_loss, create_l1_smooth_loss
+from detection.losses import CreateLoss
 from static_values.values import object_names
 
 
@@ -15,7 +15,7 @@ def build_head(feature, num_filters, name):
 
 
 def ssd_head(features):
-    num_classes = len(object_names) + 1
+    num_classes = len(object_names)
     num_anchor_boxes = 9
     classes_outs = []
     box_outputs = []
@@ -24,10 +24,10 @@ def ssd_head(features):
         detect_head = build_head(feature, num_anchor_boxes * 4, 'detect_head' + str(idx))
         box_outputs.append(layers.Reshape([-1, 4])(detect_head))
         classes_out = layers.Reshape([-1, num_classes])(classify_head)
-        classes_outs.append(layers.Softmax(axis=-1, name='classify_out' + str(idx))(classes_out))
+        classes_outs.append(layers.Activation('sigmoid', name='classify_out' + str(idx))(classes_out))
     classes_outs = layers.Concatenate(axis=1)(classes_outs)
     box_outputs = layers.Concatenate(axis=1)(box_outputs)
-    return [classes_outs, box_outputs]
+    return layers.Concatenate()([box_outputs, classes_outs])
 
 
 def create_ssd_model(backbone_weights=None):
@@ -37,58 +37,52 @@ def create_ssd_model(backbone_weights=None):
     return Model(inputs=[pyramid.input], outputs=outputs)
 
 
-def create_training_fn(model: Model, optimizer: Opt.Adam, batch_size, decay=2.5e-5):
-    focal_loss = create_focal_loss(batch_size)
-    l1_smooth_loss = create_l1_smooth_loss(batch_size)
+def create_training_fn(model: Model, optimizer: Opt.Adam, decay=5e-5):
+    compute_loss = CreateLoss()
     decay_layers = []
     for l in model.layers:
         if '_head' in l.name:
             decay_layers.append(l.name)
 
-    def training_step(images, offsets, labels_oh):
+    def training_step(images, labels):
         with tf.GradientTape() as tape:
-            pred_labels, pred_offsets = model(images, training=True)
-            classify_losses, pos_indices = focal_loss(labels_oh, pred_labels)
-            localize_losses = l1_smooth_loss(offsets, pred_offsets, pos_indices)
+            pred_labels = model(images, training=True)
+            cls_loss, loc_loss, total_losses = compute_loss(labels, pred_labels)
 
             kernel_variables = [model.get_layer(name).weights[0] for name in decay_layers]
             wd_penalty = decay * tf.reduce_sum([tf.reduce_sum(tf.square(k)) for k in kernel_variables])
-            # wd_penalty = tf.cast(wd_penalty, tf.float64)
-            total_losses = classify_losses + localize_losses + wd_penalty
+            total_losses += wd_penalty
         grads = tape.gradient(total_losses, model.trainable_weights)
         optimizer.apply_gradients(zip(grads, model.trainable_weights))
         return {"total_losses": total_losses,
-                "classify_losses": classify_losses,
-                "localize_losses": localize_losses}
+                "classify_losses": cls_loss,
+                "localize_losses": loc_loss}
 
     return training_step
 
 
-def create_val_fn(model: Model, batch_size):
-    focal_loss = create_focal_loss(batch_size)
-    l1_smooth_loss = create_l1_smooth_loss(batch_size)
+def create_val_fn(model: Model):
+    compute_loss = CreateLoss()
 
-    def val_step(images, offsets, labels_oh):
-        pred_labels, pred_offsets = model(images, training=False)
-        classify_losses, pos_indices = focal_loss(labels_oh, pred_labels)
-        localize_losses = l1_smooth_loss(offsets, pred_offsets, pos_indices)
-        total_losses = classify_losses + localize_losses
+    def val_step(images, labels):
+        pred_labels = model(images, training=False)
+        cls_loss, loc_loss, total_losses = compute_loss(labels, pred_labels)
         return {"total_losses": total_losses,
-                "classify_losses": classify_losses,
-                "localize_losses": localize_losses}
+                "classify_losses": cls_loss,
+                "localize_losses": loc_loss}
 
     return val_step
 
 
 def calc_loop(ds, step_fn, total_mean_fn, classify_mean_fn, localize_mean_fn, mode='training'):
     print("Processing....")
-    for step, [X, offsets, labels_oh] in enumerate(ds):
-        losses = step_fn(X, offsets, labels_oh)
+    for step, [X, labels] in enumerate(ds):
+        losses = step_fn(X, labels)
         total_mean_fn(losses["total_losses"])
         classify_mean_fn(losses["classify_losses"])
         localize_mean_fn(losses["localize_losses"])
 
-        if step % 100 == 0:
+        if step % 1 == 0:
             print(f"\tLoss at step {step + 1}:", total_mean_fn.result().numpy())
             print(f"\t\t- Classification:", classify_mean_fn.result().numpy())
             print(f"\t\t- Localization:", localize_mean_fn.result().numpy())

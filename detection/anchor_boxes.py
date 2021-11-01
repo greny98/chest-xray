@@ -10,6 +10,7 @@ class AnchorBoxes:
         self.feature_widths = [1. / step for step in self.steps]
         self.aspect_ratios = [0.5, 1., 2.]
         self.scales = [2 ** x for x in [0, 1 / 3, 2 / 3]]
+        self.num_anchors = len(self.aspect_ratios) * len(self.scales)
         self.boxes = self.gen_anchor_boxes()
         self.total_dims = self.get_total_dims()
 
@@ -22,19 +23,17 @@ class AnchorBoxes:
 
     def gen_anchor_boxes(self):
         boxes = []
-        total = 0
-        for f_num, n_step in enumerate(self.steps):
+        for fw, n_step in zip(self.feature_widths, self.steps):
             for row in range(n_step):
                 for col in range(n_step):
-                    cx = (col + 0.5) * self.feature_widths[f_num]
-                    cy = (row + 0.5) * self.feature_widths[f_num]
+                    cx = (col + 0.5) * fw
+                    cy = (row + 0.5) * fw
                     for scale in self.scales:
                         for ratio in self.aspect_ratios:
                             sqrt_ratio = tf.sqrt(ratio)
-                            width = scale * sqrt_ratio * self.feature_widths[f_num]
-                            height = scale * (1 / sqrt_ratio) * self.feature_widths[f_num]
+                            width = scale * sqrt_ratio * fw
+                            height = scale * (1 / sqrt_ratio) * fw
                             boxes.append(tf.convert_to_tensor([cx, cy, width, height]))
-                            total += 1
         return tf.stack(boxes, axis=0)
 
 
@@ -42,75 +41,58 @@ class AnchorBoxes:
 class LabelEncoder:
     def __init__(self, num_classes=len(object_names), steps=STEPS):
         self.anchor_boxes = AnchorBoxes(steps)
-        self.num_classes = num_classes + 1  # 0 for background
+        self.num_classes = num_classes  # 0 for background
+        self.variants = tf.convert_to_tensor([0.1, 0.1, 0.2, 0.2], tf.float32)
 
     def compute_offsets(self, matched_gt_boxes):
-        off_cx = (matched_gt_boxes[:, 0] - self.anchor_boxes.boxes[:, 0]) / self.anchor_boxes.boxes[:, 2]
-        off_cy = (matched_gt_boxes[:, 1] - self.anchor_boxes.boxes[:, 1]) / self.anchor_boxes.boxes[:, 3]
-        off_w = tf.math.log(matched_gt_boxes[:, 2] / self.anchor_boxes.boxes[:, 2])
-        off_h = tf.math.log(matched_gt_boxes[:, 3] / self.anchor_boxes.boxes[:, 3])
-        return tf.stack([off_cx, off_cy, off_w, off_h], axis=1)
+        center = (matched_gt_boxes[:, :2] - self.anchor_boxes.boxes[:, :2]) / self.anchor_boxes.boxes[:, 2:]
+        size = tf.math.log(matched_gt_boxes[:, 2:] / matched_gt_boxes[:, 2:])
+        return tf.concat([center, size], axis=-1) / self.variants
 
-    def matching(self, gt_boxes, gt_classes, iou_threshold=0.5):
+    def matching(self, gt_boxes, gt_classes, match_iou=0.5, ignore_iou=0.4):
         """
         Matching ground truth boxes and anchor boxes
         :param gt_boxes:
         :param gt_classes:
-        :param iou_threshold:
-        :return:
+        :param match_iou:
+        :param ignore_iou:
+        :return: offsets, anchor_boxes_classes
         """
-        iou_anchor2gt = []
-        for gt_box in gt_boxes:
-            # Tính IoU của anchor_boxes với tất cả gt_boxes
-            iou = box_utils.calc_IoU(tf.expand_dims(gt_box, axis=0),
-                                     self.anchor_boxes.boxes, mode='center')
-            iou_anchor2gt.append(iou)
-        iou_anchor2gt = tf.stack(iou_anchor2gt, axis=1)
-        # Get best IoU
-        rows = tf.range(0, self.anchor_boxes.total_dims / 4, dtype=tf.int32)
-        arg_max_iou = tf.argmax(iou_anchor2gt, axis=1)
-        arg_max_iou = tf.cast(arg_max_iou, tf.int32)
-        best_iou = tf.gather_nd(
-            iou_anchor2gt,
-            tf.stack([rows, arg_max_iou], axis=1))
+        gt_boxes = tf.convert_to_tensor(gt_boxes)
+        iou_matrix = box_utils.calc_IoU(self.anchor_boxes.boxes, gt_boxes, mode='center')
+        matched_gt_idx = tf.argmax(iou_matrix, axis=-1)
+        best_iou = tf.reduce_max(iou_matrix, axis=-1)
+        positive_mask = tf.greater_equal(best_iou, match_iou)
+        negative_mask = tf.less(best_iou, ignore_iou)
+        ignore_mask = tf.logical_not(tf.logical_or(positive_mask, negative_mask))
 
         # Labeled for anchor boxes
         # Find anchor boxes that has iou >= iou_threshold
-        best_anchor_classes = tf.gather(gt_classes, arg_max_iou)
-        anchor_boxes_classes = tf.where(
-            best_iou < iou_threshold,
-            tf.zeros_like(best_anchor_classes),
-            best_anchor_classes)
-        # Edit best iou box
-        best_arg = tf.cast(tf.argmax(best_iou), tf.int32)
-        anchor_boxes_classes = tf.where(
-            rows == best_arg,
-            best_anchor_classes[best_arg],
-            anchor_boxes_classes)
-
-        # anchor_boxes_classes = tf.reshape(anchor_boxes_classes, shape=(-1,))
-        matched_gt_boxes = tf.gather_nd(gt_boxes, tf.expand_dims(arg_max_iou, axis=-1))
+        matched_gt_boxes = tf.gather(gt_boxes, matched_gt_idx)
+        anchor_boxes_classes = tf.gather(gt_classes, matched_gt_idx)
+        anchor_boxes_classes = tf.where(negative_mask, -1, anchor_boxes_classes)
+        anchor_boxes_classes = tf.where(ignore_mask, -2, anchor_boxes_classes)
         # TODO: Compute offsets for anchor box from ground truth and return both classes and offsets
         offsets = self.compute_offsets(matched_gt_boxes)
-        test = to_categorical(anchor_boxes_classes, self.num_classes)
-        if tf.reduce_sum(test[:, 0]) == test.shape[0]:
-            print("====to_categorical")
-        return offsets, to_categorical(anchor_boxes_classes, self.num_classes)
+        return tf.concat([offsets, tf.expand_dims(anchor_boxes_classes, axis=-1)], axis=-1)
 
 
 # ======================================================================================================================
 class PredictionDecoder:
     def __init__(self, anchor_boxes: AnchorBoxes):
         self.anchor_boxes = anchor_boxes
+        self.boxes_variant = tf.convert_to_tensor([0.1, 0.1, 0.2, 0.2])
 
-    def compute_bboxes(self, offsets, labels, score_threshold=0.5, iou_threshold=0.5):
+    def compute_bboxes(self, offsets, labels, score_threshold=0.2, iou_threshold=0.5):
         # offsets (batch, num_boxes, 4)
+        # offsets *= self.boxes_variant
         anchor_boxes = tf.expand_dims(self.anchor_boxes.boxes, axis=0)
-        cx = anchor_boxes[:, :, 0] + offsets[:, :, 0] * anchor_boxes[:, :, 2]
-        cy = anchor_boxes[:, :, 1] + offsets[:, :, 1] * anchor_boxes[:, :, 3]
-        w = tf.exp(offsets[:, :, 2]) * anchor_boxes[:, :, 2]
-        h = tf.exp(offsets[:, :, 3]) * anchor_boxes[:, :, 3]
+        cx = anchor_boxes[:, :, 0] + offsets[:, :, 0] * 0.1 * anchor_boxes[:, :, 2]
+        cy = anchor_boxes[:, :, 1] + offsets[:, :, 1] * 0.1 * anchor_boxes[:, :, 3]
+        w = tf.exp(offsets[:, :, 2] * 0.2) * anchor_boxes[:, :, 2]
+        h = tf.exp(offsets[:, :, 3] * 0.2) * anchor_boxes[:, :, 3]
         bboxes = tf.stack([cx, cy, w, h], axis=-1)
+        bboxes = tf.clip_by_value(bboxes, 1e-7, 1.)
         return self.get_best_bboxes(bboxes, labels, score_threshold, iou_threshold)
 
     def get_best_bboxes(self, bboxes, labels, score_threshold, iou_threshold):
@@ -133,16 +115,13 @@ class PredictionDecoder:
                 labels_scores_pos,
                 iou_threshold=iou_threshold,
                 score_threshold=score_threshold,
-                max_output_size=20
+                max_output_size=1000
             )
 
-            # results.append({
-            #     "bboxes": tf.gather(bboxes_pos, selected),
-            #     "labels": tf.gather(labels_idx_pos, selected)
-            # })
-
             results.append({
-                "bboxes": bboxes[i, :, :],
-                "labels": labels_idx[i, :]
+                "bboxes": tf.gather(bboxes_pos, selected),
+                "labels": tf.gather(labels_idx_pos, selected),
+                "scores": tf.gather(labels_scores_pos, selected)
             })
+
         return results

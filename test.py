@@ -10,7 +10,7 @@ from cv2 import cv2
 from tensorflow.keras.applications import densenet
 
 image_infos = read_csv('data/train_bbox.csv', mode='detect')
-image_file = list(image_infos.keys())[1]
+image_file = list(image_infos.keys())[100]
 
 image_infos_test = {}
 image_infos_test[image_file] = image_infos[image_file]
@@ -36,23 +36,26 @@ img_tensor = tf.expand_dims(img_tensor, axis=0)
 img_tensor = densenet.preprocess_input(img_tensor)
 
 ssd_model = create_ssd_model()
-ssd_model.load_weights('ckpt/detect_densenet169_v1/checkpoint')
+ssd_model.load_weights('ckpt/detect_densenet201_v1/checkpoint')
 pred_labels, pred_offsets = ssd_model(img_tensor, training=False)
 
 results = decoder.compute_bboxes(pred_offsets, pred_labels)
 bboxes = results[0]["bboxes"].numpy()
 labels = results[0]["labels"].numpy()
+scores = results[0]["scores"].numpy()
 print(results)
 print(np.array(gt_boxes) / img_w)
 
 gt = tf.convert_to_tensor(gt_boxes) / img_w
 
 iou = calc_IoU(gt, bboxes, mode='center')
+# print(iou)
 argmax = tf.argmax(iou).numpy()
 print("iou: ", tf.reduce_max(iou))
-
+#
 print(labels[argmax])
-print(bboxes[argmax, :])
+# print(bboxes[argmax, :])
+# print(scores[argmax])
 
 # cp_img = img[:, :, :]
 # cp_img = cv2.resize(cp_img, (320, 320))

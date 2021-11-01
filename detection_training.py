@@ -65,26 +65,26 @@ if __name__ == '__main__':
     val_loc_losses = metrics.Mean('val_loc_losses')
     val_classify_losses = metrics.Mean('val_classify_losses')
 
-    best_val = 0.
+    best_val_loss = 1e9
     for epoch in range(EPOCHS):
         # Reset state
         reset_states()
         # Training
-        if epoch > 8 and epoch % 3 == 0:
+        if epoch > 5 and epoch % 3 == 0:
             lr = lr_decay * lr
         optimizer = optimizers.Adam(lr)
         print("\n===============================================================")
         print(f"Epoch: {epoch + 1}")
         start_time = time.time()
-        training_fn = create_training_fn(ssd_model, optimizer, batch_size=args["batch_size"])
+        training_fn = create_training_fn(ssd_model, optimizer)
         calc_loop(train_ds, training_fn, train_total_losses,
                   train_classify_losses, train_loc_losses)
         # Validation
-        validate_fn = create_val_fn(ssd_model, batch_size=args["batch_size"])
+        validate_fn = create_val_fn(ssd_model)
         val_loss = calc_loop(val_ds, validate_fn, val_total_losses,
                              val_classify_losses, val_loc_losses, mode='val')
         # Update weight
-        if val_loss > best_val:
+        if val_loss < best_val_loss:
             best_val = val_loss
             ssd_model.save_weights(f'{args["output_dir"]}/checkpoint')
         end_time = time.time()

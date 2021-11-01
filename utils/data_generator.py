@@ -92,9 +92,9 @@ def detect_augmentation(label_encoder, training):
             w = w / IMAGE_SIZE
             h = h / IMAGE_SIZE
             bboxes_transformed.append(tf.convert_to_tensor([cx, cy, w, h], tf.float32))
-        offset, label_oh = label_encoder.matching(bboxes_transformed, labels)
-        return [aug_img, tf.convert_to_tensor(offset, tf.float32),
-                tf.convert_to_tensor(label_oh, tf.float32)]
+        labels = tf.convert_to_tensor(labels, tf.float32)
+        labels = label_encoder.matching(bboxes_transformed, labels)
+        return [aug_img, labels]
 
     return preprocess_image
 
@@ -123,12 +123,12 @@ def DetectionGenerator(images_info: dict, image_dir, label_encoder, training=Fal
 
     # Create dataset with process
     def process_data(image_file, y):
-        aug_image, offsets, labels_oh = tf.numpy_function(func=detect_augmentation(label_encoder, training),
-                                                          inp=[image_file, y[0], y[1], y[2]],
-                                                          Tout=[tf.float32, tf.float32, tf.float32])
-        return aug_image, offsets, labels_oh
+        aug_image, labels = tf.numpy_function(func=detect_augmentation(label_encoder, training),
+                                              inp=[image_file, y[0], y[1], y[2]],
+                                              Tout=[tf.float32, tf.float32])
+        return aug_image, labels
 
     ds = tf.data.Dataset.zip((image_files_slices, y_slices))
-    ds = ds.shuffle(16 * batch_size, reshuffle_each_iteration=training)
+    ds = ds.shuffle(256, reshuffle_each_iteration=training)
     ds = ds.map(lambda x, y: process_data(x, y), num_parallel_calls=autotune).batch(batch_size).prefetch(-1)
     return ds
