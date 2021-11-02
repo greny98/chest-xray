@@ -44,10 +44,10 @@ def FeaturePyramid(backbone: Model):
     pyr_out4 = layers.Conv2D(256, 1, name='pyr_out4_conv1')(pool_out4)
     pyr_out5 = down_sampling(pyr_out4, name='pyr_out5')
     pyr_out6 = down_sampling(pyr_out5, name='pyr_out6')
-
+    pyr_out7 = down_sampling(pyr_out6, name='pyr_out7')
     # pyramid handle
-    pyr_out1, pyr_out2, pyr_out3, pyr_out4, pyr_out5, pyr_out6 = pyramid_block(
-        [pyr_out1, pyr_out2, pyr_out3, pyr_out4, pyr_out5, pyr_out6])
+    pyr_out1, pyr_out2, pyr_out3, pyr_out4, pyr_out5, pyr_out6, pyr_out7 = pyramid_block(
+        [pyr_out1, pyr_out2, pyr_out3, pyr_out4, pyr_out5, pyr_out6, pyr_out7])
 
     # after pyramid
     pyr_out1 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out1_conv2')(pyr_out1)
@@ -56,6 +56,6 @@ def FeaturePyramid(backbone: Model):
     pyr_out4 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out4_conv2')(pyr_out4)
     pyr_out5 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out5_conv2')(pyr_out5)
     pyr_out6 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out6_conv2')(pyr_out6)
-
+    pyr_out7 = layers.Conv2D(256, 3, 1, padding='same', name='pyr_out7_conv2')(pyr_out7)
     return Model(inputs=[backbone.inputs],
-                 outputs=[pyr_out1, pyr_out2, pyr_out3, pyr_out4, pyr_out5, pyr_out6])
+                 outputs=[pyr_out1, pyr_out2, pyr_out3, pyr_out4, pyr_out5, pyr_out6, pyr_out7])

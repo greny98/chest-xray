@@ -16,4 +16,4 @@ object_names = ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltrate', 'Mass',
 object_names2idx = {key: idx for idx, key in enumerate(object_names)}
 
 # STEPS = [40, 20, 10, 5, 2, 1]
-STEPS = [64, 32, 16, 8, 4, 2]
+STEPS = [64, 32, 16, 8, 4, 2, 1]
