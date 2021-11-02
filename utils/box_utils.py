@@ -15,7 +15,7 @@ def corners_to_center(corners):
     y = (corners[:, 1] + corners[:, 3]) * 0.5
     w = corners[:, 2] - corners[:, 0]
     h = corners[:, 3] - corners[:, 1]
-    return tf.stack([x, y, w, h], axis=1)
+    return tf.stack([x, y, w, h], axis=-1)
 
 
 def center_to_corners(center):
@@ -24,11 +24,11 @@ def center_to_corners(center):
     :param center:
     :return:
     """
-    xmin = center[:, 0] - center[:, 2] / 2
-    ymin = center[:, 1] - center[:, 3] / 2
-    xmax = center[:, 0] + center[:, 2] / 2
-    ymax = center[:, 1] + center[:, 3] / 2
-    return tf.stack([xmin, ymin, xmax, ymax], axis=1)
+    xmin = center[..., 0] - center[..., 2] / 2
+    ymin = center[..., 1] - center[..., 3] / 2
+    xmax = center[..., 0] + center[..., 2] / 2
+    ymax = center[..., 1] + center[..., 3] / 2
+    return tf.stack([xmin, ymin, xmax, ymax], axis=-1)
 
 
 def calc_IoU(anchors, gt_boxes, mode='corner', reduce_mean=False):

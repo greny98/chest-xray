@@ -1,7 +1,7 @@
 from static_values.values import STEPS, object_names
 from utils import box_utils
 import tensorflow as tf
-from tensorflow.keras.utils import to_categorical
+from tensorflow.keras import layers
 
 
 class AnchorBoxes:
@@ -78,50 +78,38 @@ class LabelEncoder:
 
 
 # ======================================================================================================================
-class PredictionDecoder:
-    def __init__(self, anchor_boxes: AnchorBoxes):
-        self.anchor_boxes = anchor_boxes
-        self.boxes_variant = tf.convert_to_tensor([0.1, 0.1, 0.2, 0.2])
+class PredictionDecoder(layers.Layer):
+    def __init__(self, anchor_boxes: AnchorBoxes, **kwargs):
+        super(PredictionDecoder, self).__init__(**kwargs)
+        self.anchor_boxes = tf.expand_dims(anchor_boxes.boxes, axis=0)
+        self._box_variance = tf.convert_to_tensor([0.1, 0.1, 0.2, 0.2])
+        self.confidence_threshold = 0.05,
+        self.nms_iou_threshold = 0.5,
+        self.max_detections_per_class = 100,
+        self.max_detections = 100,
 
-    def compute_bboxes(self, offsets, labels, score_threshold=0.2, iou_threshold=0.5):
-        # offsets (batch, num_boxes, 4)
-        # offsets *= self.boxes_variant
-        anchor_boxes = tf.expand_dims(self.anchor_boxes.boxes, axis=0)
-        cx = anchor_boxes[:, :, 0] + offsets[:, :, 0] * 0.1 * anchor_boxes[:, :, 2]
-        cy = anchor_boxes[:, :, 1] + offsets[:, :, 1] * 0.1 * anchor_boxes[:, :, 3]
-        w = tf.exp(offsets[:, :, 2] * 0.2) * anchor_boxes[:, :, 2]
-        h = tf.exp(offsets[:, :, 3] * 0.2) * anchor_boxes[:, :, 3]
-        bboxes = tf.stack([cx, cy, w, h], axis=-1)
-        bboxes = tf.clip_by_value(bboxes, 1e-7, 1.)
-        return self.get_best_bboxes(bboxes, labels, score_threshold, iou_threshold)
+    def _decode_box_predictions(self, box_predictions):
+        boxes = box_predictions * self._box_variance
+        boxes = tf.concat(
+            [
+                boxes[:, :, :2] * self.anchor_boxes[:, :, 2:] + self.anchor_boxes[:, :, :2],
+                tf.math.exp(boxes[:, :, 2:]) * self.anchor_boxes[:, :, 2:],
+            ],
+            axis=-1,
+        )
+        boxes_transformed = box_utils.center_to_corners(boxes)
+        return boxes_transformed
 
-    def get_best_bboxes(self, bboxes, labels, score_threshold, iou_threshold):
-        # bboxes: (batch, num_boxes, 4)
-        # labels: (batch, num_boxes, num_classes + 1)
-        labels_scores = tf.reduce_max(labels, axis=-1)
-        labels_idx = tf.argmax(labels, axis=-1)
-        labels_scores = tf.convert_to_tensor(labels_scores)
-        results = []
-        batch_size, _, _ = bboxes.get_shape()
-        for i in range(batch_size):
-            object_boxes_indices = tf.where(labels_idx[i, :] > 0)
-            bboxes_pos = tf.gather_nd(bboxes[i, :, :], tf.expand_dims(object_boxes_indices, axis=1))
-            bboxes_pos = tf.reshape(bboxes_pos, shape=(-1, 4))
-            labels_scores_pos = tf.gather_nd(labels_scores[i, :], object_boxes_indices)
-            labels_idx_pos = tf.gather_nd(labels_idx[i, :], object_boxes_indices)
-            bboxes_corners = box_utils.center_to_corners(bboxes_pos)
-            selected = tf.image.non_max_suppression(
-                bboxes_corners,
-                labels_scores_pos,
-                iou_threshold=iou_threshold,
-                score_threshold=score_threshold,
-                max_output_size=1000
-            )
-
-            results.append({
-                "bboxes": tf.gather(bboxes_pos, selected),
-                "labels": tf.gather(labels_idx_pos, selected),
-                "scores": tf.gather(labels_scores_pos, selected)
-            })
-
-        return results
+    def call(self, predictions, **kwargs):
+        box_predictions = predictions[:, :, :4]
+        cls_predictions = predictions[:, :, 4:]
+        boxes = self._decode_box_predictions(box_predictions)
+        return tf.image.combined_non_max_suppression(
+            tf.expand_dims(boxes, axis=2),
+            cls_predictions,
+            100,
+            100,
+            0.5,
+            0.03,
+            # clip_boxes=False,
+        )
