@@ -35,7 +35,7 @@ def down_sampling(pyr_out, name):
 
 
 def FeaturePyramid(backbone: Model):
-    # (64x64) => (32x32) => (16x16) => (8x8) => (4x4)  => (2x2)
+    # (64x64) => (32x32) => (16x16) => (8x8) => (4x4)  => (2x2) => (1x1)
     pool_out1, pool_out2, pool_out3, pool_out4 = backbone.outputs
     # Change all to 256 units
     pyr_out1 = layers.Conv2D(256, 1, name='pyr_out1_conv1')(pool_out1)

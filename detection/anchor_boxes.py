@@ -83,10 +83,6 @@ class PredictionDecoder(layers.Layer):
         super(PredictionDecoder, self).__init__(**kwargs)
         self.anchor_boxes = tf.expand_dims(anchor_boxes.boxes, axis=0)
         self._box_variance = tf.convert_to_tensor([0.1, 0.1, 0.2, 0.2])
-        self.confidence_threshold = 0.05,
-        self.nms_iou_threshold = 0.5,
-        self.max_detections_per_class = 100,
-        self.max_detections = 100,
 
     def _decode_box_predictions(self, box_predictions):
         boxes = box_predictions * self._box_variance
@@ -107,9 +103,9 @@ class PredictionDecoder(layers.Layer):
         return tf.image.combined_non_max_suppression(
             tf.expand_dims(boxes, axis=2),
             cls_predictions,
-            100,
-            100,
-            0.5,
-            0.03,
-            # clip_boxes=False,
+            max_output_size_per_class=20,
+            max_total_size=20,
+            iou_threshold=0.5,
+            score_threshold=0.3,
+            clip_boxes=False,
         )
