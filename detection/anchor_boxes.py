@@ -46,7 +46,7 @@ class LabelEncoder:
 
     def compute_offsets(self, matched_gt_boxes):
         center = (matched_gt_boxes[:, :2] - self.anchor_boxes.boxes[:, :2]) / self.anchor_boxes.boxes[:, 2:]
-        size = tf.math.log(matched_gt_boxes[:, 2:] / matched_gt_boxes[:, 2:])
+        size = tf.math.log(matched_gt_boxes[:, 2:] / self.anchor_boxes.boxes[:, 2:])
         return tf.concat([center, size], axis=-1) / self.variants
 
     def matching(self, gt_boxes, gt_classes, match_iou=0.5, ignore_iou=0.4):

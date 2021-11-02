@@ -2,7 +2,7 @@ import tensorflow as tf
 
 
 def swap_xy(boxes):
-    return tf.stack([boxes[:, 1], boxes[:, 0], boxes[:, 3], boxes[:, 2]], axis=-1)
+    return tf.stack([boxes[..., 1], boxes[..., 0], boxes[..., 3], boxes[..., 2]], axis=-1)
 
 
 def corners_to_center(corners):
@@ -11,10 +11,10 @@ def corners_to_center(corners):
     :param corners:
     :return:
     """
-    x = (corners[:, 0] + corners[:, 2]) * 0.5
-    y = (corners[:, 1] + corners[:, 3]) * 0.5
-    w = corners[:, 2] - corners[:, 0]
-    h = corners[:, 3] - corners[:, 1]
+    x = (corners[..., 0] + corners[..., 2]) * 0.5
+    y = (corners[..., 1] + corners[..., 3]) * 0.5
+    w = corners[..., 2] - corners[..., 0]
+    h = corners[..., 3] - corners[..., 1]
     return tf.stack([x, y, w, h], axis=-1)
 
 

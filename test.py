@@ -7,7 +7,7 @@ from cv2 import cv2
 from tensorflow.keras.applications import densenet
 
 image_infos = read_csv('data/train_bbox.csv', mode='detect')
-image_file = list(image_infos.keys())[12]
+image_file = list(image_infos.keys())[1]
 
 image_infos_test = {}
 image_infos_test[image_file] = image_infos[image_file]
@@ -33,13 +33,15 @@ img_tensor = tf.expand_dims(img_tensor, axis=0)
 img_tensor = densenet.preprocess_input(img_tensor)
 
 model = create_ssd_model()
-model.load_weights('ckpt/detect_densenet201/checkpoint')
+model.load_weights('ckpt/detect_densenet169_v1/checkpoint')
 pred_labels = model(img_tensor, training=False)
 
-image = tf.keras.Input(shape=(512, 512, 3,), name="image")
-predictions = model(image, training=False)
-detections = PredictionDecoder(label_encoder.anchor_boxes)(predictions)
-print("++++++ detections", detections)
-inference_model = Model(inputs=image, outputs=detections)
-results = inference_model.predict(img_tensor)
-print(results)
+print(tf.reduce_max(pred_labels[:, :, 4:]))
+
+# image = tf.keras.Input(shape=(512, 512, 3,), name="image")
+# predictions = model(image, training=False)
+# detections = PredictionDecoder(label_encoder.anchor_boxes)(predictions)
+# print("++++++ detections", detections)
+# inference_model = Model(inputs=image, outputs=detections)
+# results = inference_model.predict(img_tensor)
+# print(results)
