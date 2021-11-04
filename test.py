@@ -10,7 +10,7 @@ from cv2 import cv2
 from tensorflow.keras.applications import densenet
 
 image_infos = read_csv('data/train_bbox.csv', mode='detect')
-image_file = list(image_infos.keys())[3]
+image_file = list(image_infos.keys())[10]
 
 image_infos_test = {}
 image_infos_test[image_file] = image_infos[image_file]
@@ -18,6 +18,7 @@ image_infos_test[image_file] = image_infos[image_file]
 img = cv2.imread(f'data/images/{image_file}')
 img_h, img_w, _ = img.shape
 gt_boxes = image_infos[image_file]['bboxes']
+print("=== image_infos[image_file]:", image_infos[image_file])
 gt_boxes = np.array(gt_boxes) / img_h
 
 for x, y, w, h in gt_boxes:
@@ -45,8 +46,10 @@ detections = PredictionDecoder(label_encoder.anchor_boxes)(predictions)
 
 inference_model = Model(inputs=image, outputs=detections)
 results = inference_model.predict(img_tensor)
-bboxes, scores, labels, n_valid = results
-gt_boxes = box_utils.center_to_corners(tf.convert_to_tensor(gt_boxes, tf.float32))
-print(bboxes, gt_boxes, scores, labels)
-iou = box_utils.calc_IoU(bboxes[0, :, :], gt_boxes)
-print(iou)
+# print("=== results", results)
+print("reduce_max:", tf.reduce_max(results))
+# bboxes, scores, labels, n_valid = results
+# gt_boxes = box_utils.center_to_corners(tf.convert_to_tensor(gt_boxes, tf.float32))
+# print(bboxes, gt_boxes, scores, labels)
+# iou = box_utils.calc_IoU(bboxes[0, :, :], gt_boxes)
+# print(iou)

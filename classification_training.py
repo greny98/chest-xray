@@ -47,10 +47,8 @@ if __name__ == '__main__':
     X_train = X_train.reshape(-1)
     X_val = X_val.reshape(-1)
     # Create ds
-    # train_ds = create_ds(X_train, y_train, images_dir, training=True)
-    # val_ds = create_ds(X_val, y_val, images_dir)
-    train_ds = ClassifyGenerator(X_train, y_train, images_dir, training=True)
-    val_ds = ClassifyGenerator(X_val, y_val, images_dir, training=False)
+    train_ds = ClassifyGenerator(X_train, y_train, images_dir, training=True, batch_size=args['batch_size'])
+    val_ds = ClassifyGenerator(X_val, y_val, images_dir, training=False, batch_size=args['batch_size'])
     # Create model
     model = create_model()
     # Compile with loss
@@ -59,7 +57,7 @@ if __name__ == '__main__':
     # training
     EPOCHS = args['epochs']
     lr = args['lr']
-    lr_decay = 0.97
+    lr_decay = 0.90
     train_mean_losses = metrics.Mean('losses')
     val_mean_losses = metrics.Mean(name='val_losses')
     training_metrics = [metrics.BinaryAccuracy(name='acc') for _ in range(len(l_losses))]

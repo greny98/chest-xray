@@ -1,57 +1,64 @@
 import tensorflow as tf
-
+from tensorflow.keras import losses
 from static_values.values import object_names
 
 
-def CreateClassificationLoss(_gamma=2., _alpha=0.25):
-    def focal_loss(y_true, y_pred):
+class ClassificationLoss(losses.Loss):
+    def __init__(self, alpha=0.25, gamma=2.):
+        super(ClassificationLoss, self).__init__(reduction='none', name="ClassificationLoss")
+        self._gamma = gamma
+        self._alpha = alpha
+
+    def call(self, y_true, y_pred):
         # Calculate
         cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
             labels=y_true, logits=y_pred
         )
-        alpha = tf.where(tf.equal(y_true, 1.0), _alpha, (1.0 - _alpha))
+        alpha = tf.where(tf.equal(y_true, 1.0), self._alpha, (1.0 - self._alpha))
         pt = tf.where(tf.equal(y_true, 1.0), y_pred, 1 - y_pred)
-        loss = alpha * tf.pow(1.0 - pt, _gamma) * cross_entropy
+        loss = alpha * tf.pow(1.0 - pt, self._gamma) * cross_entropy
         return tf.reduce_sum(loss, axis=-1)
 
-    return focal_loss
 
+class LocalizationLoss(losses.Loss):
+    def __init__(self, delta=1.):
+        super(LocalizationLoss, self).__init__(reduction="none", name="LocalizationLoss")
+        self._delta = delta
 
-def CreateLocalizationLoss(delta=1):
-    def l1_smooth_loss(y_true, y_pred):
+    def call(self, y_true, y_pred):
         # Tính loss của positive boxes và top các negative có loss cao
         diff = y_true - y_pred
         abs_diff = tf.abs(diff)
         square_diff = tf.square(diff)
-        loss = tf.where(tf.less(abs_diff, delta), 0.5 * square_diff, abs_diff - 0.5)
+        loss = tf.where(tf.less(abs_diff, self._delta), 0.5 * square_diff, abs_diff - 0.5)
         return tf.reduce_sum(loss, axis=-1)
 
-    return l1_smooth_loss
 
+class RetinaNetLoss(losses.Loss):
+    def __init__(self, num_classes=len(object_names), alpha=0.25, gamma=2., delta=1):
+        super(RetinaNetLoss, self).__init__(reduction='auto', name='RetinaNetLoss')
+        self._num_classes = num_classes
+        self.focal_loss = ClassificationLoss(alpha=alpha, gamma=gamma)
+        self.l1_smooth_loss = LocalizationLoss(delta=delta)
 
-def CreateLoss(num_classes=len(object_names)):
-    def compute_loss(y_true, y_pred):
-        focal_loss = CreateClassificationLoss()
-        l1_smooth_loss = CreateLocalizationLoss()
+    def call(self, y_true, y_pred):
         y_pred = tf.cast(y_pred, tf.float32)
-        # Create mask
-        positive_mask = tf.cast(tf.greater(y_true[:, :, 4], -1), tf.float32)
-        ignore_mask = tf.cast(tf.equal(y_true[:, :, 4], -2), tf.float32)
-        # Get classification loss
-        cls_true = tf.one_hot(
-            tf.cast(y_true[:, :, 4], tf.int32),
-            depth=num_classes,
+        box_labels = y_true[:, :, :4]
+        box_predictions = y_pred[:, :, :4]
+        cls_labels = tf.one_hot(
+            tf.cast(y_true[:, :, 4], dtype=tf.int32),
+            depth=self._num_classes,
             dtype=tf.float32,
         )
-        cls_pred = y_pred[:, :, 4:]
-        cls_loss = focal_loss(cls_true, cls_pred)
-        cls_loss = tf.where(tf.equal(ignore_mask, 1.), 0, cls_loss)
-        # bboxes losses
-        loc_loss = l1_smooth_loss(y_true[:, :, :4], y_pred[:, :, :4])
-        loc_loss = tf.where(tf.equal(positive_mask, 1.), loc_loss, 0.)
+        cls_predictions = y_pred[:, :, 4:]
+        positive_mask = tf.cast(tf.greater(y_true[:, :, 4], -1.0), dtype=tf.float32)
+        ignore_mask = tf.cast(tf.equal(y_true[:, :, 4], -2.0), dtype=tf.float32)
+        clf_loss = self.focal_loss(cls_labels, cls_predictions)
+        box_loss = self.l1_smooth_loss(box_labels, box_predictions)
+        clf_loss = tf.where(tf.equal(ignore_mask, 1.0), 0.0, clf_loss)
+        box_loss = tf.where(tf.equal(positive_mask, 1.0), box_loss, 0.0)
         normalizer = tf.reduce_sum(positive_mask, axis=-1)
-        cls_loss = tf.math.divide_no_nan(tf.reduce_sum(cls_loss, axis=-1), normalizer)
-        loc_loss = tf.math.divide_no_nan(tf.reduce_sum(loc_loss, axis=-1), normalizer)
-        return cls_loss, loc_loss, cls_loss + loc_loss
-
-    return compute_loss
+        clf_loss = tf.math.divide_no_nan(tf.reduce_sum(clf_loss, axis=-1), normalizer)
+        box_loss = tf.math.divide_no_nan(tf.reduce_sum(box_loss, axis=-1), normalizer)
+        loss = clf_loss + box_loss
+        return loss

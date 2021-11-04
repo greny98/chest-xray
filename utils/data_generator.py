@@ -3,6 +3,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.applications import densenet
 import albumentations as augment
+
+from detection.anchor_boxes import LabelEncoder
 from static_values.values import IMAGE_SIZE, BATCH_SIZE, object_names
 
 autotune = tf.data.AUTOTUNE
@@ -12,8 +14,12 @@ def classify_augmentation(training=False):
     if training:
         transform = augment.Compose([
             augment.ImageCompression(quality_lower=90, quality_upper=100, p=0.4),
+            augment.RandomCrop(1000, 1000),
+            augment.HorizontalFlip(p=0.3),
+            augment.VerticalFlip(p=0.3),
+            augment.RandomRotate90(p=0.3),
             augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
-            augment.ShiftScaleRotate(shift_limit=0.025, scale_limit=0.025, rotate_limit=45),
+            augment.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15),
             augment.GaussNoise(p=0.4),
             augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
         ])
@@ -52,13 +58,17 @@ def ClassifyGenerator(images, y, image_dir, training=False, batch_size=BATCH_SIZ
 
 # ======================================================================================================================
 
-def detect_augmentation(label_encoder, training):
+def detect_augmentation(label_encoder: LabelEncoder, training: bool):
     if training:
         transform = augment.Compose([
-            augment.ImageCompression(quality_lower=90, quality_upper=100, p=0.35),
-            augment.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.4),
-            augment.ShiftScaleRotate(shift_limit=0.02, scale_limit=0.02, rotate_limit=20),
-            augment.GaussNoise(p=0.45),
+            augment.ImageCompression(quality_lower=90, quality_upper=100, p=0.4),
+            augment.RandomCrop(1000, 1000),
+            augment.HorizontalFlip(p=0.3),
+            augment.VerticalFlip(p=0.3),
+            augment.RandomRotate90(p=0.3),
+            augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
+            augment.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15),
+            augment.GaussNoise(p=0.4),
             augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
         ], bbox_params=augment.BboxParams(format='coco'))
     else:
@@ -80,20 +90,18 @@ def detect_augmentation(label_encoder, training):
         # extract transformed image
         aug_img = transformed['image']
         aug_img = tf.cast(aug_img, tf.float32)
-
         aug_img = densenet.preprocess_input(aug_img)
         aug_img = tf.cast(aug_img, tf.float32)
 
         # extract transformed bboxes
         bboxes_transformed = []
         for x, y, w, h, _ in transformed['bboxes']:
-            cx = (x + 0.5 * w) / IMAGE_SIZE
-            cy = (y + 0.5 * h) / IMAGE_SIZE
-            w = w / IMAGE_SIZE
-            h = h / IMAGE_SIZE
+            cx = x + 0.5 * w
+            cy = y + 0.5 * h
             bboxes_transformed.append(tf.convert_to_tensor([cx, cy, w, h], tf.float32))
+        bboxes_transformed = tf.convert_to_tensor(bboxes_transformed, tf.float32)
         labels = tf.convert_to_tensor(labels, tf.float32)
-        labels = label_encoder.matching(bboxes_transformed, labels)
+        labels = label_encoder.encode_sample(aug_img.shape, bboxes_transformed, labels)
         return [aug_img, labels]
 
     return preprocess_image

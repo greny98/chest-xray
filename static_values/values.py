@@ -5,11 +5,11 @@ l_diseases = ['Cardiomegaly', 'Emphysema', 'Effusion', 'Hernia', 'Infiltration',
               'Consolidation']
 
 # Image size default
-# IMAGE_SIZE = 320
-IMAGE_SIZE = 640
+IMAGE_SIZE = 512
+# IMAGE_SIZE = 640
 
 # Batch size
-BATCH_SIZE = 3
+BATCH_SIZE = 9
 
 object_names = ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltrate', 'Mass',
                 'Nodule', 'Pneumonia', 'Pneumothorax']
