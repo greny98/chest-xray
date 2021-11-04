@@ -28,9 +28,6 @@ for x, y, w, h in gt_boxes:
     h = int(h)
     cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-label_encoder = LabelEncoder()
-decoder = PredictionDecoder(label_encoder.anchor_boxes)
-
 img_tensor = cv2.resize(img, (512, 512))
 img_tensor = tf.convert_to_tensor(img_tensor, dtype=tf.float32)
 img_tensor = tf.expand_dims(img_tensor, axis=0)
@@ -42,14 +39,9 @@ pred_labels = model(img_tensor, training=False)
 
 image = tf.keras.Input(shape=(512, 512, 3,), name="image")
 predictions = model(image, training=False)
-detections = PredictionDecoder(label_encoder.anchor_boxes)(predictions)
+detections = PredictionDecoder()(image, predictions)
 
 inference_model = Model(inputs=image, outputs=detections)
 results = inference_model.predict(img_tensor)
-# print("=== results", results)
-print("reduce_max:", tf.reduce_max(results))
-# bboxes, scores, labels, n_valid = results
-# gt_boxes = box_utils.center_to_corners(tf.convert_to_tensor(gt_boxes, tf.float32))
-# print(bboxes, gt_boxes, scores, labels)
-# iou = box_utils.calc_IoU(bboxes[0, :, :], gt_boxes)
-# print(iou)
+print("=== results", results)
+

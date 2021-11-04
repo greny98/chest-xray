@@ -24,9 +24,7 @@ def ssd_head(features):
         detect_head = build_head(feature, num_anchor_boxes * 4, 'detect_head' + str(idx))
         box_outputs.append(layers.Reshape([-1, 4])(detect_head))
         classes_out = layers.Reshape([-1, num_classes])(classify_head)
-        classes_outs.append(
-            layers.Activation('sigmoid', name='classify_out' + str(idx))(classes_out)
-        )
+        classes_outs.append(classes_out)
     classes_outs = layers.Concatenate(axis=1)(classes_outs)
     box_outputs = layers.Concatenate(axis=1)(box_outputs)
     return layers.Concatenate(axis=-1)([box_outputs, classes_outs])

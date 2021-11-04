@@ -122,16 +122,17 @@ class PredictionDecoder(layers.Layer):
 
     def call(self, images, predictions):
         image_shape = tf.cast(tf.shape(images), dtype=tf.float32)
-        anchor_boxes = self._anchor_box.get_anchors(image_shape[1], image_shape[2])
+        anchor_boxes = self._anchor_boxes.create_anchors_boxes(image_shape[1], image_shape[2])
         box_predictions = predictions[:, :, :4]
-        cls_predictions = predictions[:, :, 4:]
+        cls_predictions = tf.nn.sigmoid(predictions[:, :, 4:])
+        print(tf.reduce_max(cls_predictions))
         boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_predictions)
         return tf.image.combined_non_max_suppression(
             tf.expand_dims(boxes, axis=2),
             cls_predictions,
             max_output_size_per_class=10,
             max_total_size=10,
-            iou_threshold=0.3,
+            iou_threshold=0.5,
             score_threshold=0.05,
             clip_boxes=False,
         )
