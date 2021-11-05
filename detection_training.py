@@ -1,6 +1,6 @@
 import argparse
 import os
-from tensorflow.keras import metrics, optimizers, callbacks
+from tensorflow.keras import optimizers, callbacks
 from detection.anchor_boxes import LabelEncoder
 from detection.ssd import create_ssd_model
 from detection.losses import RetinaNetLoss
