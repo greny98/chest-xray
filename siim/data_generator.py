@@ -24,13 +24,15 @@ def split_data(filename: str):
 def classify_augmentation(training=False):
     if training:
         transform = augment.Compose([
-            augment.ImageCompression(quality_lower=90, quality_upper=100),
+            augment.ImageCompression(quality_lower=80, quality_upper=100),
             augment.HorizontalFlip(),
             augment.VerticalFlip(),
             augment.RandomRotate90(),
             augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
-            augment.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15),
-            augment.GaussNoise(p=0.3),
+            augment.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=30),
+            augment.GaussNoise(),
+            augment.RandomGamma(),
+            augment.GaussianBlur(),
             augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
         ])
     else:
