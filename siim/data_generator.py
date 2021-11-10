@@ -31,9 +31,9 @@ def classify_augmentation(training=False):
             augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
             augment.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=30),
             augment.GaussNoise(),
-            augment.RandomGamma(),
             augment.GaussianBlur(),
-            augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
+            augment.LongestMaxSize(1600),
+            augment.RandomSizedCrop(min_max_height=(800, 1024), height=IMAGE_SIZE, width=IMAGE_SIZE, w2h_ratio=1., p=0.5),
         ])
     else:
         transform = augment.Compose([augment.Resize(IMAGE_SIZE, IMAGE_SIZE)])
