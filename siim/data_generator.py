@@ -77,7 +77,7 @@ def create_images_info(filename: str):
     images_info = {}
     for i, row in df.iterrows():
         images_info[row['image']] = {
-            "bboxes": row['boxes'],
+            "bboxes": np.maximum(row['boxes'], 0.),
             "labels": np.ones(row['boxes'].shape[0], dtype=np.int32)
         }
     return images_info
