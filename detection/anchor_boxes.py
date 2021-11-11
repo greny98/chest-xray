@@ -55,9 +55,8 @@ class AnchorBoxes:
 
 # ======================================================================================================================
 class LabelEncoder:
-    def __init__(self, num_classes=len(object_names)):
+    def __init__(self):
         self._anchor_boxes = AnchorBoxes()
-        self._num_classes = num_classes
         self._box_variance = tf.convert_to_tensor([0.1, 0.1, 0.2, 0.2], tf.float32)
 
     @staticmethod

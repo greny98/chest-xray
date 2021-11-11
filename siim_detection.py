@@ -5,25 +5,26 @@ from detection.anchor_boxes import LabelEncoder
 from detection.ssd import create_ssd_model
 from detection.losses import RetinaNetLoss
 from utils.data_generator import DetectionGenerator
-from utils.dataframe import read_csv
+from siim.data_generator import create_images_info
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--batch_size', type=int, default=6)
     parser.add_argument('--epochs', type=int, default=50)
-    parser.add_argument('--train_csv', type=str)
-    parser.add_argument('--val_csv', type=str)
-    parser.add_argument('--image_dir', type=str, default='images')
+    parser.add_argument('--csv_path', type=str, default='data/siim/train_val.csv')
+    parser.add_argument('--image_dir', type=str, default='data/siim/images')
     parser.add_argument('--lr', type=float, default=2e-4)
     parser.add_argument('--output_dir', type=str, default='model')
+    parser.add_argument('--log_dir', type=str, default='logs')
+    parser.add_argument('--basenet_ckpt', type=str, default=None)
     args = vars(parser.parse_args())
     return args
 
 
 # Learning Rate Schedule
 def schedule(e, lr):
-    if e <= 5:
+    if e <= 5 and e % 3 != 0:
         return lr
     return 0.975 * lr
 
@@ -37,14 +38,17 @@ if __name__ == '__main__':
     images_dir = args['image_dir']
     # Prepare data
     label_encoder = LabelEncoder()
-    train_image_info = read_csv(args["train_csv"], mode='detect')
-    val_image_info = read_csv(args["val_csv"], mode='detect')
+    image_info = create_images_info(args["csv_path"])
+    images = list(image_info.keys())
+    n_train = int(0.9 * len(images))
+    train_image_info = {key: image_info[key] for key in images[:n_train]}
+    val_image_info = {key: image_info[key] for key in images[n_train:]}
     train_ds = DetectionGenerator(train_image_info, images_dir, label_encoder=label_encoder, training=True,
                                   batch_size=args["batch_size"])
     val_ds = DetectionGenerator(val_image_info, images_dir, label_encoder=label_encoder, training=False,
                                 batch_size=args["batch_size"])
     # Create Model
-    ssd_model = create_ssd_model()
+    ssd_model = create_ssd_model(args['basenet_ckpt'])
     # ssd_model.load_weights("").expect_partial()
     loss_fn = RetinaNetLoss(num_classes=1)
     ssd_model.compile(

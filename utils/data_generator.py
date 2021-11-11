@@ -61,15 +61,14 @@ def ClassifyGenerator(images, y, image_dir, training=False, batch_size=BATCH_SIZ
 def detect_augmentation(label_encoder: LabelEncoder, training: bool):
     if training:
         transform = augment.Compose([
-            augment.ImageCompression(quality_lower=90, quality_upper=100, p=0.4),
-            augment.RandomCrop(1000, 1000),
-            augment.HorizontalFlip(p=0.3),
-            augment.VerticalFlip(p=0.3),
-            augment.RandomRotate90(p=0.3),
+            augment.ImageCompression(quality_lower=80, quality_upper=100),
+            augment.HorizontalFlip(),
+            augment.VerticalFlip(),
+            augment.RandomRotate90(),
             augment.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
             augment.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15),
-            augment.GaussNoise(p=0.4),
-            augment.Resize(IMAGE_SIZE, IMAGE_SIZE),
+            augment.GaussNoise(),
+            augment.RandomSizedBBoxSafeCrop(640, 640),
         ], bbox_params=augment.BboxParams(format='coco'))
     else:
         transform = augment.Compose([augment.Resize(IMAGE_SIZE, IMAGE_SIZE)],
@@ -99,6 +98,7 @@ def detect_augmentation(label_encoder: LabelEncoder, training: bool):
             cx = x + 0.5 * w
             cy = y + 0.5 * h
             bboxes_transformed.append(tf.convert_to_tensor([cx, cy, w, h], tf.float32))
+        print(len(bboxes_transformed))
         bboxes_transformed = tf.convert_to_tensor(bboxes_transformed, tf.float32)
         labels = tf.convert_to_tensor(labels, tf.float32)
         labels = label_encoder.encode_sample(aug_img.shape, bboxes_transformed, labels)

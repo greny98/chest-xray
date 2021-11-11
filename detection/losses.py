@@ -43,6 +43,7 @@ class RetinaNetLoss(losses.Loss):
         self.l1_smooth_loss = LocalizationLoss(delta=delta)
 
     def call(self, y_true, y_pred):
+        print(y_true, y_pred)
         y_pred = tf.cast(y_pred, tf.float32)
         box_labels = y_true[:, :, :4]
         box_predictions = y_pred[:, :, :4]

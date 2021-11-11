@@ -32,8 +32,8 @@ def classify_augmentation(training=False):
             augment.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=30),
             augment.GaussNoise(),
             augment.GaussianBlur(),
-            augment.LongestMaxSize(1600),
-            augment.RandomSizedCrop(min_max_height=(800, 1024), height=IMAGE_SIZE, width=IMAGE_SIZE, w2h_ratio=1., p=0.5),
+            augment.SmallestMaxSize(1024),
+            augment.RandomSizedCrop(min_max_height=(800, 1024), height=IMAGE_SIZE, width=IMAGE_SIZE, w2h_ratio=1.),
         ])
     else:
         transform = augment.Compose([augment.Resize(IMAGE_SIZE, IMAGE_SIZE)])
@@ -64,3 +64,20 @@ def SiimClassificationGenerator(data, image_dir, batch_size=BATCH_SIZE, training
     ds = ds.map(lambda x, y: process_data(x, y), num_parallel_calls=autotune).batch(batch_size)
     ds = ds.prefetch(autotune)
     return ds
+
+
+# ======================================================================================================================
+def create_images_info(filename: str):
+    df = pd.read_csv(filename)
+    # Lấy No Finding == 0
+    df = df[df['No Finding'] == 0]
+    # Convert boxes về np.array
+    df['boxes'] = df['boxes'].apply(eval).apply(np.array)
+    # Tạo dict
+    images_info = {}
+    for i, row in df.iterrows():
+        images_info[row['image']] = {
+            "bboxes": row['boxes'],
+            "labels": np.ones(row['boxes'].shape[0], dtype=np.int32)
+        }
+    return images_info

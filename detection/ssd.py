@@ -15,7 +15,8 @@ def build_head(feature, num_filters, name):
 
 
 def ssd_head(features):
-    num_classes = len(object_names)
+    # num_classes = len(object_names)
+    num_classes = 1
     num_anchor_boxes = 9
     classes_outs = []
     box_outputs = []
