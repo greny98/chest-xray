@@ -9,7 +9,7 @@ class AnchorBoxes:
         self._aspect_ratios = [0.5, 1.0, 2.0]
         self._scales = [2 ** x for x in [0, 1 / 3, 2 / 3]]
         self._num_anchors = len(self._aspect_ratios) * len(self._scales)
-        self._areas = [x ** 2 for x in [16, 32, 64, 128, 256, 512]]
+        self._areas = [x ** 2 for x in [32, 64, 128, 256, 512]]
         self._strides = [2 ** i for i in range(3, 8)]
         self._anchor_dims = self._compute_dims()
 
@@ -125,12 +125,13 @@ class PredictionDecoder(layers.Layer):
         box_predictions = predictions[:, :, :4]
         cls_predictions = tf.nn.sigmoid(predictions[:, :, 4:])
         boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_predictions)
-        return tf.image.combined_non_max_suppression(
-            tf.expand_dims(boxes, axis=2),
-            cls_predictions,
-            max_output_size_per_class=10,
-            max_total_size=10,
-            iou_threshold=0.5,
-            score_threshold=0.05,
-            clip_boxes=False,
-        )
+        # return tf.image.combined_non_max_suppression(
+        #     tf.expand_dims(boxes, axis=2),
+        #     cls_predictions,
+        #     max_output_size_per_class=10,
+        #     max_total_size=10,
+        #     iou_threshold=0.5,
+        #     score_threshold=0.05,
+        #     clip_boxes=True,
+        # )
+        return cls_predictions, boxes

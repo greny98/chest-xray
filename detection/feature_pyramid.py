@@ -1,15 +1,21 @@
 from tensorflow.keras import layers, Model
 from backbone.model import load_basenet
+from siim.model import DiagnosisModel
 from static_values.values import IMAGE_SIZE
 
 
 def get_backbone(weights=None):
-    base_net = load_basenet(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3))
+    # base_net = load_basenet(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3))
+    # # print("===== base_net", base_net.weights[10])
+    # if weights is not None:
+    #     base_net.load_weights(weights).expect_partial()
+    #
+    # # print("===== base_net___", base_net.weights[10])
+    diagnosis_model = DiagnosisModel()
     if weights is not None:
-        base_net.load_weights(weights).expect_partial()
-        for l in base_net.layers:
-            l.trainable = False
+        diagnosis_model.load_weights(weights).expect_partial()
 
+    base_net = diagnosis_model.layers[0]
     extract_layers = ['pool2_pool', 'pool3_pool', 'pool4_pool']
     feature_maps = [base_net.get_layer(name).output for name in extract_layers]
     return Model(inputs=[base_net.inputs], outputs=feature_maps)

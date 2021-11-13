@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=2e-4)
     parser.add_argument('--output_dir', type=str, default='model')
     parser.add_argument('--log_dir', type=str, default='logs')
-    parser.add_argument('--basenet_ckpt', type=str, default=None)
+    parser.add_argument('--basenet_ckpt', type=str, default="ckpt/classification/checkpoint")
     args = vars(parser.parse_args())
     return args
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
                                 batch_size=args["batch_size"])
     # Create Model
     ssd_model = create_ssd_model(args['basenet_ckpt'])
-    # ssd_model.load_weights("").expect_partial()
+    # ssd_model.load_weights("ckpt/classification/checkpoint").expect_partial()
     loss_fn = RetinaNetLoss(num_classes=1)
     ssd_model.compile(
         loss=loss_fn,
